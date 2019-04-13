@@ -1,0 +1,11 @@
+[Unit]
+Description=Save AP-specific data for Tor
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStop=-/usr/bin/qrexec-client-vm dom0 alte.SignalTor+999
+ExecStop=/bin/sh /etc/qubes-rpc/alte.SetAP
+
+[Install]
+WantedBy=multi-user.target

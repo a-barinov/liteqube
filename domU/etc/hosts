@@ -1,0 +1,12 @@
+127.0.0.1	localhost
+::1		localhost ip6-localhost ip6-loopback debian-core
+ff02::1		ip6-allnodes
+ff02::2		ip6-allrouters
+
+127.0.1.1       debian-core
+127.0.1.1       core-keys
+127.0.1.1       core-mail
+127.0.1.1       core-net
+127.0.1.1       core-usb
+127.0.1.1       core-tor
+127.0.1.1       core-vpn

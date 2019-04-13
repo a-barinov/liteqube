@@ -1,0 +1,4 @@
+#!/bin/sh
+
+/bin/systemctl enable tor-monitor
+/bin/systemctl start tor-monitor

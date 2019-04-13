@@ -1,0 +1,15 @@
+#!/bin/sh
+
+/bin/mount -t tmpfs -o noatime,nodev,nosuid,noexec,size=1%,mode=1777 tmpfs /media
+
+/bin/systemctl enable dm-event.socket
+/bin/systemctl start dm-event.socket
+
+/bin/systemctl enable lvm2-lvmetad.socket
+/bin/systemctl start lvm2-lvmetad.socket
+
+/bin/systemctl enable lvm2-lvmpolld.socket
+/bin/systemctl start lvm2-lvmpolld.socket
+
+/bin/systemctl enable usbguard
+/bin/systemctl start usbguard

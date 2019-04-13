@@ -1,0 +1,10 @@
+#!/bin/sh
+
+/bin/rm /run/resolv.conf
+/bin/ln -s /run/NetworkManager/resolv.conf /run/resolv.conf
+
+/bin/systemctl enable NetworkManager
+/bin/systemctl start NetworkManager
+
+/bin/systemctl enable wifi-monitor
+/bin/systemctl start wifi-monitor

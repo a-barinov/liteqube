@@ -1,0 +1,23 @@
+#!/bin/sh
+
+NEW_DATE="$(/usr/bin/tlsdate --dont-set-clock --showtime human --skip-verification -x socks5://10.137.0.1:9050 -H google.com)" || exit 1
+NEW_SECONDS="$(/bin/date --date="${NEW_DATE}" +%s)" || exit 1
+CURRENT_SECONDS="$(/bin/date +%s)" || exit 1
+VARIANCE="$((${NEW_SECONDS}-${CURRENT_SECONDS}))"
+VARIANCE="${VARIANCE#-}"
+
+if [ "${VARIANCE}" -lt 300 ] ; then
+    TARGET=$(/bin/date --date=@${NEW_SECONDS}) || exit 1
+    /bin/date --set="${TARGET}" && /usr/bin/qrexec-client-vm dom0 alte.Message+"Time adjusted by ${VARIANCE} secs" || /usr/bin/qrexec-client-vm dom0 alte.Message+"Failed to adjust time by ${VARIANCE} secs"
+elif [ "${VARIANCE}" -lt 3600 ] ; then
+    MINUTES=$((${VARIANCE}/60))
+    /usr/bin/qrexec-client-vm dom0 alte.Message+"Time variance is ${MINUTES} mins"
+elif [ "${VARIANCE}" -lt 86400 ] ; then
+    HOURS=$((${VARIANCE}/3600))
+    [ ${HOURS} = 1 ] || SUFFIX="s"
+    /usr/bin/qrexec-client-vm dom0 alte.Message+"Time variance is ${HOURS} hour${SUFFIX}"
+else
+    DAYS=$((${VARIANCE}/86400))
+    [ ${DAYS} = 1 ] || SUFFIX="s"
+    /usr/bin/qrexec-client-vm dom0 alte.Message+"Time variance is ${DAYS} day${SUFFIX}"
+fi

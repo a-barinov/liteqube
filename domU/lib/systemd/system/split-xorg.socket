@@ -1,0 +1,14 @@
+[Unit]
+Description=Split Xorg Socket
+
+[Socket]
+ListenStream=/tmp/.X11-unix/X0
+Accept=yes
+MaxConnections=1
+SocketUser=root
+SocketGroup=root
+SocketMode=0777
+DirectoryMode=0777
+
+[Install]
+WantedBy=sockets.target

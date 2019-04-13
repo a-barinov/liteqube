@@ -1,0 +1,29 @@
+#!/bin/bash
+
+MAILFILE="/home/user/spool"
+LOCKFILE="$MAILFILE.lock"
+
+# Wait for exclusive access to file
+COUNT=0
+while [ -e "$LOCKFILE" ] ; do
+    if [ $COUNT -gt 10 ] ; then
+        /usr/bin/qrexec-client-vm dom0 alte.Message+"ERROR Waiting for mail spool unlock" &>/dev/null
+        exit 1
+    fi
+    COUNT=$((COUNT+1))
+    /bin/sleep 30
+done
+
+# Set the lock
+TMPFILE=$(mktemp)
+if sudo -u user ln -s "$TMPFILE" "$LOCKFILE" ; then
+    [ -e "$MAILFILE" ] && sudo -u user cat "$MAILFILE"
+    sudo -u user truncate -s 0 "$MAILFILE"
+    sudo -u user rm "$LOCKFILE"
+    /usr/bin/qrexec-client-vm dom0 alte.SignalMail+$(grep -c '^From ' < /home/user/spool)
+else
+    /usr/bin/qrexec-client-vm dom0 alte.Message+"ERROR Failed to aquire mail spool lock" &>/dev/null
+    exit 1
+fi
+
+exit 0

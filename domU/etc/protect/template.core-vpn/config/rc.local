@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# qubes service for ssh-agent socket
+/bin/systemctl enable split-ssh
+
+# ssh-agent socket
+/bin/systemctl enable split-ssh.socket
+/bin/systemctl start split-ssh.socket
+
+# ssh vpn daemon
+/bin/systemctl start ssh-vpn
+
+# redsocks for transparent proxy
+/bin/systemctl enable redsocks
+/bin/systemctl start redsocks

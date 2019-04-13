@@ -1,0 +1,30 @@
+#!/bin/bash
+
+LINE=$(cat /home/user/.dbus/session-bus/* | grep DBUS_SESSION_BUS_ADDRESS= | tail -n 1)
+BUS=${LINE:25}
+
+case ${1:0:2} in
+    "EN")
+        sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} dbus-send --dest=org.naquadah.awesome.awful --type=method_call --print-reply / org.naquadah.awesome.awful.Remote.Eval string:\"wifi_state('Enabled', ${1:3})\"" 1>/dev/null 2>&1
+        ;;
+    "ST")
+        sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} dbus-send --dest=org.naquadah.awesome.awful --type=method_call --print-reply / org.naquadah.awesome.awful.Remote.Eval string:\"wifi_state('State', ${1:3})\"" 1>/dev/null 2>&1
+        ;;
+    "AP")
+        sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} dbus-send --dest=org.naquadah.awesome.awful --type=method_call --print-reply / org.naquadah.awesome.awful.Remote.Eval string:\"wifi_state('AccessPoint', '${1:3}')\"" 1>/dev/null 2>&1
+        if [ x"${1:3}" = x"" ] ; then
+            qvm-run --no-autostart --no-gui --user root --service core-tor alte.SetAP
+        else
+            until
+                sleep 5
+                qvm-run --autostart --no-gui --user root --service core-tor "alte.SetAP+${1:3}"
+                xentop -bfi 1 | grep core-tor 1>/dev/null
+            do continue ; done
+        fi
+        ;;
+    "SI")
+        sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} dbus-send --dest=org.naquadah.awesome.awful --type=method_call --print-reply / org.naquadah.awesome.awful.Remote.Eval string:\"wifi_state('Signal', ${1:3})\"" 1>/dev/null 2>&1
+        ;;
+esac
+
+exit 0

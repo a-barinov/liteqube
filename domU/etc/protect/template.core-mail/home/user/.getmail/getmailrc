@@ -1,0 +1,16 @@
+[retriever]
+type = SimplePOP3SSLRetriever
+server = pop.gmail.com
+username = user@gmail.com
+#password_command = ("qrexec-client-vm", "core-keys", "qubes.SplitPassword+gmail")
+
+[destination]
+type = Mboxrd
+path = ~/spool
+locktype = flock
+
+[options]
+read_all = false
+delivered_to = false
+received = false
+delete_after = 30

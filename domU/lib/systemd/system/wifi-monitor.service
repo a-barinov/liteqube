@@ -1,0 +1,15 @@
+[Unit]
+Description=Monitor WiFi state and report over qubes interface
+ConditionPathExists=/usr/local/bin/wifi-monitor.py
+Requires=NetworkManager
+After=NetworkManager
+
+[Service]
+Type=simple
+User=nobody
+Group=nogroup
+StandardOutput=journal
+StandardError=journal
+ExecStart=/usr/bin/python3 /usr/local/bin/wifi-monitor.py
+Restart=always
+RestartSec=10

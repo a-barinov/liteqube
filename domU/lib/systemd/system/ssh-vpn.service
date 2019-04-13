@@ -1,0 +1,18 @@
+[Unit]
+Description=Connect to SSH service and create SOCKS5 server
+Requires=split-ssh.socket
+After=split-ssh.socket
+
+[Service]
+Type=simple
+User=user
+Group=user
+StandardOutput=journal
+StandardError=journal
+Environment="SSH_AUTH_SOCK=/home/user/.ssh/ssh-agent-core-keys"
+ExecStartPre=/usr/bin/qrexec-client-vm dom0 alte.SignalVpn+connecting
+ExecStart=/usr/bin/ssh -D 127.0.0.1:1080 -o StrictHostKeyChecking=no -q -C -N -p 443 root@101.101.101.101
+ExecStartPost=/bin/sh -c "until netstat -pntl | grep 1080 >/dev/null; do sleep 3; done; /usr/bin/qrexec-client-vm dom0 alte.SignalVpn+connected"
+ExecStopPost=/usr/bin/qrexec-client-vm dom0 alte.SignalVpn+disconnected
+Restart=always
+RestartSec=10

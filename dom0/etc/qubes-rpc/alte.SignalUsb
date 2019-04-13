@@ -1,0 +1,15 @@
+#!/bin/bash
+
+LINE=$(cat /home/user/.dbus/session-bus/* | grep DBUS_SESSION_BUS_ADDRESS= | tail -n 1)
+BUS=${LINE:25}
+
+case ${1:0:2} in
+    "M-")
+        sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} dbus-send --dest=org.naquadah.awesome.awful --type=method_call --print-reply / org.naquadah.awesome.awful.Remote.Eval string:\"widgets.usb.state('mount', '${1:2}')\"" 1>/dev/null 2>&1
+        ;;
+    "U-")
+        sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} dbus-send --dest=org.naquadah.awesome.awful --type=method_call --print-reply / org.naquadah.awesome.awful.Remote.Eval string:\"widgets.usb.state('umount', '${1:2}')\"" 1>/dev/null 2>&1
+        ;;
+esac
+
+exit 0

@@ -1,0 +1,14 @@
+[Unit]
+Description=Split SSH Socket
+
+[Socket]
+ListenStream=/home/user/.ssh/ssh-agent-core-keys
+Accept=yes
+MaxConnections=1
+SocketUser=user
+SocketGroup=user
+SocketMode=0600
+DirectoryMode=0700
+
+[Install]
+WantedBy=sockets.target

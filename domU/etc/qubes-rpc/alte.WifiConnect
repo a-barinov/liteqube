@@ -1,0 +1,16 @@
+#!/bin/sh
+
+CONNECT="/usr/local/bin/wifi-connect"
+
+[ -f "${CONNECT}" ] || exit 1
+
+/bin/systemctl start split-xorg.socket
+export DISPLAY=":0"
+
+"${CONNECT}" &>/dev/null
+
+while ps --format pid:1 --no-headers -C $(basename "${CONNECT}") >/dev/null 2>&1 ; do
+    sleep 10
+done
+
+/bin/systemctl --state=active list-units | grep xorg | cut -d" " -f1 | /usr/bin/xargs /bin/systemctl stop

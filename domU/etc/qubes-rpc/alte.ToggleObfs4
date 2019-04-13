@@ -1,0 +1,18 @@
+#!/bin/sh
+
+OBFS4="/rw/config/tor/obfs4"
+TORRC="/run/torrc"
+TEMPLATE="/etc/tor/torrc"
+SERVICE="tor"
+
+[ -e "${TORRC}" ] && /bin/rm -f "${TORRC}"
+if [ -e "${OBFS4}" ] ; then
+    /bin/rm "${OBFS4}"
+    /bin/ln -s "${TEMPLATE}.direct" "${TORRC}"
+    /usr/bin/qrexec-client-vm dom0 alte.SignalTor+500
+else
+    /bin/touch "${OBFS4}"
+    /bin/ln -s "${TEMPLATE}.obfs4" "${TORRC}"
+    /usr/bin/qrexec-client-vm dom0 alte.SignalTor+501
+fi
+/bin/systemctl is-active --quiet "${SERVICE}" && /bin/systemctl restart "${SERVICE}"

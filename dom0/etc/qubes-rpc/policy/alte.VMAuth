@@ -1,0 +1,3 @@
+debian-core dom0 ask,default_target=dom0
+debian-core1 dom0 ask,default_target=dom0
+debian-full dom0 ask,default_target=dom0

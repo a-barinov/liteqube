@@ -1,0 +1,12 @@
+#!/bin/sh
+
+read RECIPIENTS
+
+MESSAGE=$(sudo -u user /usr/bin/msmtp -- "$RECIPIENTS" 2>&1)
+RESULT="$?"
+
+if [ x"$MESSAGE" != x ] ; then
+    qrexec-client-vm dom0 alte.Error+"$MESSAGE"
+fi
+
+exit $RESULT

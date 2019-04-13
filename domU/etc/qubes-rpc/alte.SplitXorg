@@ -1,0 +1,4 @@
+#!/bin/sh
+
+/usr/bin/xhost + >/dev/null 2>&1
+exec /bin/nc -U /tmp/.X11-unix/X0

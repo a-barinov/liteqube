@@ -1,0 +1,13 @@
+[Unit]
+Description=Run getmail with default settings
+
+[Service]
+Type=oneshot
+User=user
+Group=user
+ExecStartPre=/usr/bin/qrexec-client-vm dom0 alte.SignalMail+RCV
+ExecStartPre=/bin/touch /home/user/spool
+
+ExecStart=/bin/sh -c "qrexec-client-vm core-keys alte.SplitPassword+gmail | /usr/bin/getmail && qrexec-client-vm dom0 alte.SignalMail+$(grep -c '^From ' < /home/user/spool) || /usr/bin/qrexec-client-vm dom0 alte.SignalMail+ERR"
+
+#ExecStopPost=/bin/sh -c "[ ${SERVICE_RESULT} = success ] && qrexec-client-vm dom0 alte.SignalMail+$(grep -c '^From ' < /home/user/spool) || /usr/bin/qrexec-client-vm dom0 alte.SignalMail+ERR"

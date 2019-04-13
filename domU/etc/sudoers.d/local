@@ -1,0 +1,6 @@
+Defaults always_set_home,ignore_dot,timestamp_timeout=0,env_reset
+
+user ALL=(ALL) ALL
+
+user ALL=(root) NOPASSWD:/bin/systemctl start split-xorg.socket
+user ALL=(root) NOPASSWD:/bin/systemctl stop split-xorg.socket

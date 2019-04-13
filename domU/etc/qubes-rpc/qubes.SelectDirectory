@@ -1,0 +1,11 @@
+#!/bin/sh
+
+sudo /bin/systemctl start split-xorg.socket
+
+PEEKER="/usr/local/bin/file-peeker"
+"${PEEKER}" /media /usr/bin/dirname 2>/dev/null
+while ps --format pid:1 --no-headers -C $(basename "${PEEKER}") >/dev/null 2>&1 ; do
+    sleep 3
+done
+
+sudo /bin/systemctl stop split-xorg.socket

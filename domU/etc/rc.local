@@ -1,0 +1,11 @@
+#!/bin/sh -e
+
+echo '3000' > '/proc/sys/vm/dirty_writeback_centisecs'
+
+echo "nameserver 10.139.1.1\nnameserver 10.139.1.2" > /run/resolv.conf
+
+/sbin/fstrim -a
+
+[ -e /rw/QUARANTINE ] && /usr/bin/qrexec-client-vm dom0 "alte.Error+Files quarantined during boot"
+
+exit 0

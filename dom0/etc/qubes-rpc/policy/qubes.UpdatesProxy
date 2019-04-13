@@ -1,0 +1,2 @@
+$type:TemplateVM $default allow,target=core-update
+$anyvm $anyvm deny

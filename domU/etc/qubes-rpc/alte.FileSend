@@ -1,0 +1,16 @@
+#!/bin/sh
+
+if ! mount | grep "/media/" >/dev/null ; then
+    /usr/bin/qrexec-client-vm dom0 alte.Message+"Nothing to copy" &>/dev/null
+    exit 1
+fi
+
+sudo /bin/systemctl start split-xorg.socket
+
+PEEKER="/usr/local/bin/file-peeker"
+"${PEEKER}" /media /usr/bin/qvm-copy && /usr/bin/qrexec-client-vm dom0 alte.Message+"File copied" &>/dev/null
+while ps --format pid:1 --no-headers -C $(basename "${PEEKER}") >/dev/null 2>&1 ; do
+    sleep 3
+done
+
+sudo /bin/systemctl stop split-xorg.socket

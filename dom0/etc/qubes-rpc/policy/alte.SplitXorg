@@ -1,0 +1,2 @@
+core-usb core-xorg allow
+core-net core-xorg allow

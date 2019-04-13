@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec /bin/nc -U "$SSH_AUTH_SOCK"

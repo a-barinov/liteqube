@@ -1,0 +1,11 @@
+/dev/mapper/dmroot      /               ext4    noatime,ro,discard,commit=300                      0 1
+/dev/xvdb               /rw             auto    noauto,noatime,nosuid,nodev,discard,commit=300     0 2
+/rw/home                /home           none    noauto,bind,noatime,nosuid,nodev                   0 0
+/rw/usrlocal            /usr/local      none    noauto,bind,noatime,nosuid,nodev                   0 0
+tmpfs                   /dev/shm        tmpfs   size=10M                                           0 0
+devpts                  /dev/pts        devpts  gid=5,mode=620                                     0 0
+sysfs                   /sys            sysfs   defaults                                           0 0
+proc                    /proc           proc    defaults                                           0 0
+xen                     /proc/xen       xenfs   defaults                                           0 0
+tmpfs                   /tmp            tmpfs   noatime,nodev,nosuid,noexec,size=10%,mode=1777     0 0
+tmpfs                   /var/tmp        tmpfs   noatime,nodev,nosuid,noexec,size=10%,mode=1777     0 0

@@ -1,0 +1,15 @@
+[Unit]
+Description=Split Xorg - Client side
+Requires=split-xorg.socket
+After=split-xorg.socket
+
+[Service]
+Type=simple
+User=root
+Group=root
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+ExecStart=/usr/bin/qrexec-client-vm core-xorg alte.SplitXorg
+Restart=always
+RestartSec=10

@@ -1,0 +1,12 @@
+core-keys dom0 allow
+core-mail dom0 allow
+core-dvm dom0 allow
+core-net dom0 allow
+core-tor dom0 allow
+core-usb dom0 allow
+core-vpn dom0 allow
+core-xorg dom0 allow
+core-print dom0 allow
+core-update dom0 allow
+debian-core dom0 allow
+debian-full dom0 allow

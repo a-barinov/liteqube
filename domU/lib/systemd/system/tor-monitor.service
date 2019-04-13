@@ -1,0 +1,13 @@
+[Unit]
+Description=Monitor WiFi state and report over qubes interface
+ConditionPathExists=/usr/local/bin/tor-monitor.py
+
+[Service]
+Type=simple
+User=root
+Group=root
+StandardOutput=journal
+StandardError=journal
+ExecStart=/usr/bin/python3 /usr/local/bin/tor-monitor.py
+Restart=always
+RestartSec=10

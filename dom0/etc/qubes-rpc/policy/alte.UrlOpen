@@ -1,0 +1,4 @@
+personal dvm-torbrowser ask,default_target=dvm-torbrowser
+personal dvm-chromium ask,default_target=dvm-chromium
+liferea dvm-torbrowser ask,default_target=dvm-torbrowser
+liferea dvm-chromium ask,default_target=dvm-chromium

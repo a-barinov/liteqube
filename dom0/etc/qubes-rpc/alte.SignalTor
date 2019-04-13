@@ -1,0 +1,25 @@
+#!/bin/sh
+
+LINE=$(cat /home/user/.dbus/session-bus/* | grep DBUS_SESSION_BUS_ADDRESS= | tail -n 1)
+BUS=${LINE:25}
+sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} dbus-send --dest=org.naquadah.awesome.awful --type=method_call --print-reply / org.naquadah.awesome.awful.Remote.Eval string:\"tor_state($1)\"" 1>/dev/null 2>&1
+
+
+VM="core-mail"
+
+if [ -d /var/lib/qubes/appvms/${VM} ] ; then
+    if [ x"$1" = x"100" ] ; then
+        until
+            sleep 5
+            qvm-start --quiet --skip-if-running ${VM}
+            qrexec-client -d ${VM} root:"shutdown -c"
+            xentop -bfi 1 | grep ${VM} 1>/dev/null
+        do
+            continue
+        done
+    else
+        if xentop -bfi 1 | grep ${VM} 1>/dev/null ; then
+            qrexec-client -e -d ${VM} root:"shutdown +2"
+        fi
+    fi
+fi

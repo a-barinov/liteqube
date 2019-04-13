@@ -1,0 +1,15 @@
+[Unit]
+Description=Split SSH - Client side
+Requires=split-ssh.socket
+After=split-ssh.socket
+
+[Service]
+Type=simple
+User=user
+Group=user
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+ExecStart=/usr/bin/qrexec-client-vm core-keys alte.SshAgent
+Restart=always
+RestartSec=10

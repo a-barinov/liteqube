@@ -1,0 +1,81 @@
+#!/bin/sh
+
+IFS=$'\n'
+for APNM in `nmcli --terse --fields SSID,SIGNAL,SECURITY d wifi list | sort | uniq` ; do
+    set -f ; IFS=":"
+    set -- $APNM
+    set +f ; IFS=$'\n'
+    CUR_NAME="$1"
+    CUR_SIGNAL="$2"
+    CUR_SECURITY="$3"
+    FOUND="NO"
+    for APSAVE in ${APS[@]} ; do
+        set -f ; IFS=":"
+        set -- $APSAVE
+        set +f ; IFS=$'\n'
+        if [ x"$CUR_NAME" = x"$1" ] ; then
+            if [ $CUR_SIGNAL -gt $2 ] ; then
+                APS=( "${APS[@]/$APSAVE}" )
+            else
+                FOUND="YES"
+            fi
+            break
+        fi
+    done
+    if [ $FOUND = "NO" ] ; then
+        APS+=( "$APNM" )
+    fi
+done
+
+for AP in ${APS[@]} ; do
+    APSS+=( "$AP" )
+done
+
+for (( i=0; i<${#APSS[@]} ; i++ )) ; do
+    set -f ; IFS=":"
+    set -- ${APSS[$i]}
+    set +f ; IFS=$'\n'
+    SIGNAL_I=0"$2"
+    for (( j=0; j<${#APSS[@]} ; j++ )) ; do
+        set -f ; IFS=":"
+        set -- ${APSS[$j]}
+        set +f ; IFS=$'\n'
+        SIGNAL_J=0"$2"
+        if [ $SIGNAL_I -gt $SIGNAL_J ] ; then
+            T=${APSS[$i]}
+            APSS[$i]=${APSS[$j]}
+            APSS[$j]=$T
+        fi
+    done
+done
+
+for AP in ${APSS[@]} ; do
+    set -f ; IFS=":"
+    set -- $AP
+    set +f ; IFS=$'\n'
+    if [ x$3 = x"WPA1" ] || [ x$3 = x"WPA2" ] || [ x$3 = x"WPA1 WPA2" ] ; then
+        APSSS="$APSSS$1\n *\n$2%\n"
+    else
+        APSSS="$APSSS$1\n \n$2%\n"
+    fi
+done
+
+
+if [ x"$APSSS" != x"" ] ; then
+    AP=`echo -en "$APSSS" | zenity --list --title="Connect to network" --text="Available access points" --column="Access Point" --column="Security" --column="Signal" --hide-header 2>/dev/null`
+    if [ "x$AP" != x"" ] ; then
+        if nmcli --terse --fields NAME c show | grep -e "^$AP\$" 1>/dev/null ; then
+            nmcli c up "$AP"
+        else
+            if nmcli --terse --fields SSID,SECURITY d wifi list | grep -e "^$AP:WPA1" -e "^$AP:WPA2" 1>/dev/null ; then
+                PASSWORD=`zenity --title="Enter password" --entry --text="Password:" 2>/dev/null`
+                if [ "x$PASSWORD" != x"" ] ; then
+                    nmcli d wifi connect "$AP" password "$PASSWORD"
+                fi
+            else
+                nmcli d wifi connect "$AP"
+            fi
+        fi
+        nmcli c modify "$AP" wifi.mac-address ''
+    fi
+fi

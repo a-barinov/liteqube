@@ -1,0 +1,4 @@
+#!/bin/sh
+
+/bin/systemctl enable getmail.timer
+/bin/systemctl start getmail.timer

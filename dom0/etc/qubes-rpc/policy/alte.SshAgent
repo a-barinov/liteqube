@@ -1,0 +1,3 @@
+dvm-remmina core-keys ask,default_target=core-keys
+work core-keys ask,default_target=core-keys
+core-vpn core-keys ask,default_target=core-keys
