@@ -1,0 +1,17 @@
+#!/bin/sh
+
+#USER="$(ls -1 /home | head -n 1)"
+#BUS="/run/user/1000/bus"
+
+#if [ -d "/home/${USER}/.dbus/session-bus/" ] ; then
+#    LINE="$(cat /home/${USER}/.dbus/session-bus/* | grep DBUS_SESSION_BUS_ADDRESS= | tail -n 1 )"
+#    BUS="${LINE:25}"
+#fi
+
+LINEBREAK="
+"
+
+#sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} notify-send -u critical -t 5000 -i dialog-error \"${QREXEC_REMOTE_DOMAIN}$LINEBREAK${1//_/ }\"" >/dev/null 2>&1
+sudo -u user /bin/sh -c "DISPLAY=:0 notify-send -u critical -t 5000 -i dialog-error \"${QREXEC_REMOTE_DOMAIN}$LINEBREAK${1//_/ }\"" >/dev/null 2>&1
+
+exit 0

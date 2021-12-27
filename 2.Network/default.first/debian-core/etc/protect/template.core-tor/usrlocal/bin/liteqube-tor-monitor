@@ -1,0 +1,82 @@
+#!/bin/sh
+
+# Time servers
+TOR_SERVERS="qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion facebookwkhpilnemxj7asaniu7vnjjbiltxjqhye3mhbshg7kx5tfyd.onion 2s4yqjx5ul6okpp3f2gaunr2syex5jgbfpfvhxxbbjwnrsvbk5v3qbid.onion"
+CLEARNET_SERVERS="captive.apple.com"
+
+# Set time after connecting to tor network
+SET_TIME="True"
+
+# Report connection progress
+CONNECTION_PROGRESS="False"
+
+
+#################################################################
+### Do not edit code below unless you know what you are doing ###
+#################################################################
+
+
+FINAL_STATE="200"
+IFS_OLD="${IFS}"
+IFS="
+"
+for STATE in $(/bin/journalctl -t Tor | grep --line-buffered -e Bootstrapped -e Interrupt) ; do
+    case "${STATE}" in
+        *Bootstrapped*)
+            FINAL_STATE="${STATE##*Bootstrapped }"
+            FINAL_STATE="${FINAL_STATE%\%*}"
+            ;;
+        *)
+            FINAL_STATE="200"
+            ;;
+    esac
+done
+IFS="${IFS_OLD}"
+[ "${FINAL_STATE}" = "200" ] || qrexec-client-vm dom0 "liteqube.SignalTor+${FINAL_STATE}"
+
+/bin/journalctl -t Tor -t htpdate -f -n 0 | grep --line-buffered -e "Bootstrapped" -e "Interrupt" -e "Setting" -e "Received directory" | while read STATE ; do
+    case x"${STATE}" in
+        *"Bootstrapped"*)
+            STATE="${STATE##*Bootstrapped }"
+            STATE="${STATE%\%*}"
+            if [ x"${CONNECTION_PROGRESS}" = x"True" ] ; then
+                echo /usr/bin/qrexec-client-vm dom0 "liteqube.SignalTor+${STATE}"
+            else
+                if [ "${FINAL_STATE}" -eq "100" -a "${STATE}" -ne "100" ] || \
+                   [ "${FINAL_STATE}" -ne "100" -a "${STATE}" -eq "100" ] || \
+                   [ "${FINAL_STATE}" -eq "200" -a "${STATE}" -ne "200" ] || \
+                   [ "${FINAL_STATE}" -ne "200" -a "${STATE}" -eq "200" ] ; then
+                /usr/bin/qrexec-client-vm dom0 "liteqube.SignalTor+${STATE}"
+                fi
+            fi
+            FINAL_STATE="${STATE}"
+            if [ x"${STATE}" = x"100" ] && [ x"${SET_TIME}" = x"True" ] ; then
+                htpdate -b -l -s ${TOR_SERVERS} &
+            fi
+            ;;
+        *"Received directory"*)
+            /usr/bin/qrexec-client-vm dom0 liteqube.Error+"Time is way off to be useable, fixing"
+            sudo -u root -g debian-tor htpdate -l -s ${CLEARNET_SERVERS} &
+            ;;
+        *"Setting"*)
+            STATE="${STATE##*Setting }"
+            STATE="${STATE%.??? seconds}"
+            STATE="${STATE#-}"
+            if [ "${STATE}" -ne 0 ] ; then
+                if [ "${STATE}" -lt 300 ] ; then
+                    /usr/bin/qrexec-client-vm dom0 liteqube.Message+"Time difference is ${STATE}s"
+                elif [ "${STATE}" -lt 10800 ] ; then
+                    MINUTES=$(( ${STATE} / 60 ))
+                    /usr/bin/qrexec-client-vm dom0 liteqube.Error+"Time difference is ${MINUTES}m"
+                else
+                    HOURS=$(( ${STATE} / 2600 ))
+                    /usr/bin/qrexec-client-vm dom0 liteqube.Error+"Time difference is ${HOURS}h"
+                fi
+            fi
+            ;;
+        *)
+            /usr/bin/qrexec-client-vm dom0 liteqube.SignalTor+200
+            FINAL_STATE="200"
+            ;;
+    esac
+done

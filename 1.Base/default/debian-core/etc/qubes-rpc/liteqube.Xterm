@@ -1,0 +1,45 @@
+#!/bin/sh
+
+sleep 1
+if xset q >/dev/null 2>&1; then
+    XORG="yes"
+else
+    XORG="no"
+    /bin/systemctl start liteqube-split-xorg.socket
+    export DISPLAY=":0"
+    xset q >/dev/null 2>&1
+fi
+
+EXE="/usr/bin/stterm"
+if [ -z "$1" ]; then
+    CMDLINE="-c Stterm -T $(xenstore-read name) -f terminus-12"
+else
+    CMDLINE="-c Stterm -T $(xenstore-read name) -f terminus-12 -e /bin/sh -c"
+    COMMAND="sleep 0.1 ; $1"
+fi
+
+for RUN in 1 1 1 1 1 1 1 1 1 1 ; do
+    START=$(date +%s)
+    if [ -z ${COMMAND} ] ; then
+        "${EXE}" $CMDLINE >/dev/null 2>&1
+    else
+        "${EXE}" $CMDLINE "$COMMAND" >/dev/null 2>&1
+    fi
+    if [ $(($(date +%s)-${START})) -lt 1 ]; then
+        if [ "${XORG}" = "no" ] ; then
+            /bin/systemctl stop liteqube-split-xorg.socket
+            sleep 0.5
+            /bin/systemctl start liteqube-split-xorg.socket
+        fi
+        sleep ${RUN}
+    else
+        break
+    fi
+done
+
+if [ "${XORG}" = "no" ] ; then
+    while ps --format pid:1 --no-headers -C $(basename "${EXE}") >/dev/null 2>&1 ; do
+        sleep 3
+    done
+    /bin/systemctl stop liteqube-split-xorg.socket
+fi

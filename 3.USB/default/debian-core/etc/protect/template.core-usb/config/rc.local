@@ -1,0 +1,4 @@
+#!/bin/sh
+
+/bin/systemctl enable usbguard
+/bin/systemctl start usbguard

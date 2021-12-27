@@ -1,0 +1,16 @@
+[Unit]
+Description=Monitor Tor state and report over qubes interface
+ConditionPathExists=/usr/local/bin/liteqube-tor-monitor
+
+[Service]
+Type=simple
+User=root
+Group=root
+StandardOutput=journal
+StandardError=journal
+ExecStart=/bin/sh /usr/local/bin/liteqube-tor-monitor
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

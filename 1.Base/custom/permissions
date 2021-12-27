@@ -1,0 +1,2 @@
+-rwx------	root	root	./debian-core/root/TEST_FILE
+drwxr-x---	user	user	./dom0/home/user/TEST_FILE

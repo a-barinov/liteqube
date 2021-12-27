@@ -1,0 +1,9 @@
+#deb http://ftp.debian.org/debian buster main contrib non-free
+#deb http://ftp.debian.org/debian buster-backports main contrib non-free
+#deb http://ftp.debian.org/debian testing main contrib non-free
+deb http://2s4yqjx5ul6okpp3f2gaunr2syex5jgbfpfvhxxbbjwnrsvbk5v3qbid.onion/debian/ buster main contrib non-free
+#deb http://2s4yqjx5ul6okpp3f2gaunr2syex5jgbfpfvhxxbbjwnrsvbk5v3qbid.onion/debian/ buster-backports main contrib non-free
+#deb http://2s4yqjx5ul6okpp3f2gaunr2syex5jgbfpfvhxxbbjwnrsvbk5v3qbid.onion/debian/ testing main contrib non-free
+
+#deb [arch=amd64] https://deb.qubes-os.org/r4.1/vm buster main
+deb [arch=amd64] http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.1/vm buster main

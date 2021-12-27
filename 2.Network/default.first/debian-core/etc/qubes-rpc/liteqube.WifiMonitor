@@ -1,0 +1,63 @@
+#!/bin/sh
+
+[ x"${USER}" = x"root" ] || exec sudo "${0}" "${1}"
+
+#/bin/systemctl stop liteqube-wifi-monitor-state
+#/bin/systemctl start liteqube-wifi-monitor-state
+
+get_radio_status()
+{
+    WIFI_DEVICE="$(nmcli -t -f type,dbus-path d status | grep ^wifi | cut -d\: -f2 )"
+    case "$(nmcli r wifi)" in
+        "enabled")
+            WIFI_STATE="on"
+            ;;
+        "disabled")
+            WIFI_STATE="off"
+            ;;
+    esac
+}
+
+get_ap_name()
+{
+    WIFI_AP="$(nmcli -t -f state,name c show | grep ^activated | cut -d\: -f2 )"
+}
+
+get_ap_status()
+{
+    WIFI_STATUS="$(nmcli -t -f active,state c show | grep ^yes | cut -d\: -f2 )"
+    if [ x"${WIFI_STATUS}" = x"activating" ] ; then
+        WIFI_STATUS="connecting"
+    elif [ x"${WIFI_STATUS}" = x"activated" ] ; then
+        WIFI_STATUS="connected"
+    else
+        WIFI_STATUS="disconnected"
+    fi
+}
+
+get_signal_strength()
+{
+    WIFI_SIGNAL="$(nmcli -t -f active,signal d wifi list | grep ^yes | cut -d\: -f2 )"
+}
+
+get_radio_status
+if [ x"${WIFI_STATE}" = x"off" ] ; then
+    qrexec-client-vm -tT dom0 "liteqube.SignalWifi+EN-0"
+else
+    qrexec-client-vm -tT dom0 "liteqube.SignalWifi+EN-1"
+    get_ap_name
+    get_ap_status
+    if [ x"${WIFI_STATUS}" = x"connected" ] ; then
+        [ x"${WIFI_AP}" = x"" ] || qrexec-client-vm -tT core-tor "liteqube.TorSetAP+${WIFI_AP}"
+        qrexec-client-vm -tT dom0 "liteqube.SignalWifi+AP-${WIFI_AP}"
+        qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-100"
+        get_signal_strength
+        [ -z "${WIFI_SIGNAL}" ] || qrexec-client-vm -tT dom0 "liteqube.SignalWifi+SI-${WIFI_SIGNAL}"
+    else
+        [ x"${WIFI_AP}" = x"" ] || qrexec-client-vm -tT core-tor "liteqube.TorSetAP+${WIFI_AP}"
+        [ x"${WIFI_STATUS}" = x"disconnected" ] && qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-0"
+        [ x"${WIFI_STATUS}" = x"connecting" ] && qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-30"
+    fi
+fi
+
+exit 0

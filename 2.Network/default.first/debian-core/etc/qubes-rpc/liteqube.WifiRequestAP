@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ x"$(nmcli r wifi)" =  x"enabled" ] ; then
+    WIFI_AP="$(nmcli -t -f state,name c show | grep ^activated | cut -d\: -f2 )"
+    if ! [ x"${WIFI_AP}" = x"" ] ; then
+        qrexec-client-vm -tT core-tor "liteqube.TorSetAP+${WIFI_AP}"
+    fi
+fi

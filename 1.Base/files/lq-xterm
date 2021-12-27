@@ -1,0 +1,11 @@
+#!/bin/sh
+
+if [ -z "${1}" ] ; then
+    echo "$(basename "${0}"): run a root terminal in VM, optionally executing a command in it"
+    echo "Usage: $(basename "${0}") VM [COMMAND]"
+    echo "       VM: mandatory, vm to run root terminal in"
+    echo "       COMMAND: optional, shell command to execute in terminal"
+    exit 1
+fi
+
+nohup qvm-run --quiet --autostart --no-gui --user root --no-shell "${1}" /etc/qubes-rpc/liteqube.Xterm ${2} >/dev/null 2>&1 &

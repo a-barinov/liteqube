@@ -1,0 +1,11 @@
+#!/bin/sh
+
+/usr/bin/sudo /sbin/shutdown -c 1>/dev/null 2>&1
+/usr/bin/sudo /sbin/shutdown +2 1>/dev/null 2>&1
+
+if [ x"$SSH_AGENT_PID" = x ] ; then
+    eval `ssh-agent -s` 1>/dev/null
+    ssh-add 1>/dev/null 2>&1
+fi
+
+exec /bin/nc -U "$SSH_AUTH_SOCK"

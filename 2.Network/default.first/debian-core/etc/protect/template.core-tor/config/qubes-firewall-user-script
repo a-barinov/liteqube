@@ -1,0 +1,27 @@
+#!/bin/sh
+
+iptables -t nat -D PREROUTING -j PR-QBS
+iptables -t nat -A PREROUTING -i vif+ -p tcp -m tcp --dport 9050 -j REDIRECT --to-ports 9050
+iptables -t nat -A PREROUTING -i vif+ -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -j REDIRECT --to-ports 9040
+iptables -t nat -A PREROUTING -i vif+ -p udp -m udp --dport 53 -j REDIRECT --to-ports 5300
+
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+iptables -t nat -A OUTPUT -m owner --gid-owner debian-tor -j RETURN
+iptables -t nat -A OUTPUT -p udp -m udp --dport 53 -j REDIRECT --to-ports 5300
+iptables -t nat -A OUTPUT -d 127.0.0.0/9 -j RETURN
+iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 9040
+
+iptables -I INPUT -i vif+ -p udp -m udp --dport 5300 -j ACCEPT
+iptables -I INPUT -i vif+ -p tcp -m tcp --dport 9040 -j ACCEPT
+iptables -I INPUT -i vif+ -p tcp -m tcp --dport 9050 -j ACCEPT
+iptables -I INPUT -m state --state INVALID -j DROP
+iptables -I INPUT -m conntrack --ctstate INVALID -j DROP
+iptables -I INPUT -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,SYN,RST,ACK -j DROP
+iptables -I INPUT -p tcp -m tcp --tcp-flags FIN,SYN FIN,SYN -j DROP
+iptables -I INPUT -p tcp -m tcp --tcp-flags SYN,RST SYN,RST -j DROP
+iptables -I INPUT -f -j DROP
+iptables -I INPUT -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,SYN,RST,PSH,ACK,URG -j DROP
+iptables -I INPUT -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j DROP
+iptables -I INPUT -p icmp -j DROP
+
+iptables -I FORWARD -j REJECT --reject-with icmp-admin-prohibited

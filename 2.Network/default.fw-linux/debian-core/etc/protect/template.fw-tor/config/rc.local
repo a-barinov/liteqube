@@ -1,0 +1,7 @@
+#!/bin/sh
+
+/bin/systemctl enable qubes-iptables
+/bin/systemctl start qubes-iptables
+
+/bin/systemctl enable qubes-network
+/bin/systemctl start qubes-network

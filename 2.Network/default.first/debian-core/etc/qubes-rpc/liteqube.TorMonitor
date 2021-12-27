@@ -1,0 +1,24 @@
+#!/bin/sh
+
+#/bin/systemctl restart liteqube-tor-monitor
+
+sleep 3
+
+FINAL_STATE="200"
+IFS_OLD="${IFS}"
+IFS="
+"
+for STATE in $(/bin/journalctl -t Tor | grep --line-buffered -e Bootstrapped -e Interrupt) ; do
+    case "${STATE}" in
+        *Bootstrapped*)
+            FINAL_STATE="${STATE##*Bootstrapped }"
+            FINAL_STATE="${FINAL_STATE%\%*}"
+            ;;
+        *)
+            FINAL_STATE="200"
+            ;;
+    esac
+done
+[ "${FINAL_STATE}" = "200" ] || qrexec-client-vm dom0 "liteqube.SignalTor+${FINAL_STATE}"
+
+exit 0

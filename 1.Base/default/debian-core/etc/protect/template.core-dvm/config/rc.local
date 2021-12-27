@@ -1,0 +1,11 @@
+#!/bin/sh
+
+chattr -R -i /rw/QUARANTINE
+chattr -R -i /rw/home
+chattr -R -i /rw/config
+
+rm -rf /rw/QUARANTINE
+rm -rf /rw/home/*
+rm -rf /rw/config/*
+
+shutdown now

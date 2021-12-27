@@ -1,0 +1,6 @@
+#!/bin/sh
+
+/bin/systemctl start qubes-gui-agent
+
+/bin/systemctl enable liteqube-shutdown-inactive
+/bin/systemctl start liteqube-shutdown-inactive

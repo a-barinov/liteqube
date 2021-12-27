@@ -1,0 +1,13 @@
+[Unit]
+Description=Shutdown VM after a period of inactivity
+ConditionPathExists=/usr/local/bin/liteqube-shutdown-inactive
+
+[Service]
+Type=simple
+User=root
+Group=root
+StandardOutput=journal
+StandardError=journal
+ExecStart=/bin/sh /usr/local/bin/liteqube-shutdown-inactive
+Restart=always
+RestartSec=10

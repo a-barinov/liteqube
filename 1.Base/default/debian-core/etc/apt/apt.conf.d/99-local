@@ -1,0 +1,10 @@
+Acquire::BlockDotOnion "false";
+Acquire::http::AllowRedirect "false";
+Dir::Log "/var/tmp";
+Dir::Log::Terminal "";
+Dir::Log::History "";
+APT::Force-LoopBreak "true";
+APT::Install-Recommends "false";
+APT::AutoRemove "";
+APT::AutoRemove::RecommendsImportant "false";
+APT::AutoRemove::SuggestsImportant "false";

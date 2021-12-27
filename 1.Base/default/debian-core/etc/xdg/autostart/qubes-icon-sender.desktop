@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Window icon updater
+;Exec=/usr/bin/qrexec-client-vm dom0 qubes.WindowIconUpdater /usr/lib/qubes/icon-sender
+Terminal=false
+Type=Application
+Categories=
+GenericName=
+OnlyShowIn=X-QUBES;

@@ -1,0 +1,6 @@
+drwx------	root	root	./debian-core/etc/protect/template.fw-net
+drwxr-xr-x	root	root	./debian-core/etc/protect/template.fw-net/config
+-rwxr-xr-x	root	root	./debian-core/etc/protect/template.fw-net/config/rc.local
+drwx------	root	root	./debian-core/etc/protect/template.fw-tor
+drwxr-xr-x	root	root	./debian-core/etc/protect/template.fw-tor/config
+-rwxr-xr-x	root	root	./debian-core/etc/protect/template.fw-tor/config/rc.local

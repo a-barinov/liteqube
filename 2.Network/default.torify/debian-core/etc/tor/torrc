@@ -1,0 +1,17 @@
+DataDirectory /var/lib/tor
+PidFile /run/tor/tor.pid
+ControlSocket /run/tor/tor.socket RelaxDirModeCheck
+CookieAuthentication 0
+RunAsDaemon 1
+User debian-tor
+DisableNetwork 0
+Log notice syslog
+
+VirtualAddrNetwork 10.192.0.0/10
+AutomapHostsOnResolve 1
+
+SocksPort 10.137.0.1:9050
+TransPort 10.137.0.1:9040 IsolateClientAddr IsolateDestPort
+TransPort 127.0.0.1:9040 IsolateClientAddr IsolateDestPort
+DnsPort 10.137.0.1:5300
+DnsPort 127.0.0.1:5300

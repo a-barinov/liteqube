@@ -1,0 +1,15 @@
+[Unit]
+Description=Split Xorg - Client side
+Requires=liteqube-split-xorg.socket
+After=liteqube-split-xorg.socket
+
+[Service]
+Type=simple
+User=root
+Group=root
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+ExecStart=/usr/bin/qrexec-client-vm core-xorg liteqube.SplitXorg
+Restart=always
+RestartSec=10

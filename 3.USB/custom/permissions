@@ -1,0 +1,3 @@
+drwxr-xr-x	root	root	./debian-core/etc
+drwxrwxr-x	root	root	./debian-core/etc/usbguard
+-rw-------	root	root	./debian-core/etc/usbguard/rules.conf

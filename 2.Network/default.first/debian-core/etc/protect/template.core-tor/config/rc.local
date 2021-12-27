@@ -1,0 +1,11 @@
+#!/bin/sh
+
+/bin/systemctl enable qubes-iptables
+/bin/systemctl start qubes-iptables
+
+. /rw/config/qubes-firewall-user-script
+
+/bin/systemctl enable liteqube-tor-monitor
+/bin/systemctl start liteqube-tor-monitor
+
+/usr/bin/qrexec-client-vm core-net liteqube.WifiRequestAP

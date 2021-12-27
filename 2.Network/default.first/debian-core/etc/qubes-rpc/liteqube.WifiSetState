@@ -1,0 +1,11 @@
+#!/bin/sh
+
+if [ x"${1}" = x"off" ] ; then
+    /usr/bin/nmcli r wifi off
+    sleep 1
+    /usr/bin/nmcli r wifi off
+else
+    /usr/bin/nmcli r wifi on
+fi
+
+exit 0

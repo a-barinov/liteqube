@@ -1,0 +1,3 @@
+#!/bin/sh
+
+sudo qubes-dom0-update --console --show-output $@

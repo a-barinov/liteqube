@@ -1,0 +1,17 @@
+#!/bin/sh
+
+/bin/umount /var/tmp
+/bin/mount / -o rw,remount
+
+/bin/systemctl enable qubes-iptables
+/bin/systemctl start qubes-iptables
+
+/bin/systemctl enable qubes-firewall
+/bin/systemctl start qubes-firewall
+
+touch /var/run/qubes-service/qubes-updates-proxy
+/bin/systemctl enable qubes-updates-proxy
+/bin/systemctl start qubes-updates-proxy
+
+/bin/systemctl enable liteqube-shutdown-inactive
+/bin/systemctl start liteqube-shutdown-inactive

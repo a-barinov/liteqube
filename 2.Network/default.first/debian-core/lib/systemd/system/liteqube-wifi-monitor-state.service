@@ -1,0 +1,15 @@
+[Unit]
+Description=Monitor WiFi state and report over qubes interface
+ConditionPathExists=/usr/local/bin/liteqube-wifi-monitor-state
+Requires=NetworkManager
+After=NetworkManager
+
+[Service]
+Type=simple
+User=root
+Group=root
+StandardOutput=journal
+StandardError=journal
+ExecStart=/bin/sh /usr/local/bin/liteqube-wifi-monitor-state
+Restart=always
+RestartSec=10

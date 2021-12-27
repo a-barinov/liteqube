@@ -1,0 +1,55 @@
+#!/bin/sh
+
+[ x"${USER}" = x"root" ] || exec sudo "${0}" "${1}"
+
+# Base dirs
+APFILE="/rw/config/tor/ap"
+OBFS4="/rw/config/tor/obfs4"
+TORLIB="/var/lib/tor"
+TORSAVE="/rw/config/tor/var-lib"
+TORRC="/run/torrc"
+TEMPLATE="/etc/tor/torrc"
+
+# Where are we now?
+[ -e "${APFILE}" ] || touch "${APFILE}"
+AP=$(cat "${APFILE}")
+
+if [ -z "$1" ] ; then
+    /bin/systemctl stop tor
+    if ! [ -z "${AP}" ] ; then
+        if ! [ -e "${TORSAVE}/${AP}" ] ; then
+            /bin/mkdir --mode=700 "${TORSAVE}/${AP}"
+            /bin/chown debian-tor:debian-tor "${TORSAVE}/${AP}"
+        fi
+        /bin/rm -rf "${TORSAVE}/${AP}"/*
+        /bin/cp -a "${TORLIB}"/* "${TORSAVE}/${AP}"
+        /bin/rm -rf "${TORLIB}"/*
+        /bin/rm -rf "${APFILE}"
+    fi
+    /sbin/shutdown +1
+else
+    /sbin/shutdown -c
+    if ! [ x"${AP}" = x"$1" ] ; then
+        /bin/systemctl stop tor
+        #[ -e "${TORRC}" ] && rm -f "${TORRC}"
+        #if [ -e "${OBFS4}" ] ; then
+        #    /bin/ln -s "${TEMPLATE}.obfs4" "${TORRC}"
+        #    /usr/bin/qrexec-client-vm dom0 alte.SignalTor+501
+        #else
+        #    /bin/ln -s "${TEMPLATE}.direct" "${TORRC}"
+        #    /usr/bin/qrexec-client-vm dom0 alte.SignalTor+500
+        #fi
+        /bin/rm -rf "${TORLIB}"/*
+        echo "$1" > "${APFILE}"
+        /bin/chmod 0600 "${APFILE}"
+        if ! [ -d "${TORSAVE}/$1" ] ; then
+            /bin/mkdir --mode=700 "${TORSAVE}/$1"
+            /bin/chown debian-tor:debian-tor "${TORSAVE}/$1"
+        fi
+        /bin/cp -a "${TORSAVE}/$1"/* "${TORLIB}"
+    fi
+    /bin/systemctl enable tor
+    /bin/systemctl start tor
+    /bin/systemctl enable liteqube-tor-shutdown
+    /bin/systemctl start liteqube-tor-shutdown
+fi

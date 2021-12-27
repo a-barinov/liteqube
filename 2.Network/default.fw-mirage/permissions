@@ -1,0 +1,4 @@
+drwxr-xr-x	root	qubes	./dom0/var/lib/qubes/vm-kernels/mirage-firewall
+-rw-r--r--	root	qubes	./dom0/var/lib/qubes/vm-kernels/mirage-firewall/initramfs
+-rw-r--r--	root	qubes	./dom0/var/lib/qubes/vm-kernels/mirage-firewall/modules.img
+-rw-r--r--	root	qubes	./dom0/var/lib/qubes/vm-kernels/mirage-firewall/vmlinuz

@@ -1,0 +1,15 @@
+[Unit]
+Description=Split SSH - Client side
+Requires=liteqube-split-ssh.socket
+After=liteqube-split-ssh.socket
+
+[Service]
+Type=simple
+User=user
+Group=user
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+ExecStart=/usr/bin/qrexec-client-vm core-keys liteqube.SplitSSH
+Restart=always
+RestartSec=30

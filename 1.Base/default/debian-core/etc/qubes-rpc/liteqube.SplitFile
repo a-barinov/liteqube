@@ -1,0 +1,9 @@
+#!/bin/sh
+
+FILE="$(basename "${1}")"
+
+/usr/bin/sudo /sbin/shutdown -c 1>/dev/null 2>&1
+/usr/bin/qrexec-client-vm dom0 liteqube.Message+"${QREXEC_REMOTE_DOMAIN} requested file $FILE"
+/usr/bin/sudo /sbin/shutdown +2 1>/dev/null 2>&1
+cat "/home/user/${QREXEC_REMOTE_DOMAIN}/$FILE" || exit 1
+exit 0

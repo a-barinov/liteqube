@@ -1,0 +1,38 @@
+#!/bin/bash
+
+if [ -e /lib/systemd/system/NetworkManager.service.d/30_qubes.conf ] ; then
+    mount / -o rw,remount
+    rm -f /lib/systemd/system/NetworkManager.service.d/30_qubes.conf >/dev/null 2>&1
+    mount / -o ro,remount
+fi
+
+while ! ps -A | grep qrexec-agent >/dev/null 2>&1 ; do
+    sleep 1
+done
+
+sleep 1
+
+mkdir -p -m 700 /run/liteqube
+qrexec-client-vm core-keys liteqube.SplitFile+secret_key > /run/liteqube/secret_key
+chmod 600 /run/liteqube/secret_key
+
+for LINK in /etc/NetworkManager/system-connections/* ; do
+    [ -L "${LINK}" ] || continue
+    qrexec-client-vm core-keys "liteqube.SplitFile+$(basename ${LINK//[. ]/_})" > "/run/liteqube/$(basename "${LINK}")"
+    chmod 600 "/run/liteqube/$(basename "${LINK}")"
+done
+
+/bin/rm /run/resolv.conf
+/bin/ln -s /run/NetworkManager/resolv.conf /run/resolv.conf
+
+/bin/systemctl enable qubes-network
+/bin/systemctl start qubes-network
+
+/bin/systemctl enable NetworkManager
+/bin/systemctl start NetworkManager
+
+/bin/systemctl enable liteqube-wifi-monitor-state
+/bin/systemctl start liteqube-wifi-monitor-state
+
+/bin/systemctl enable liteqube-wifi-monitor-signal
+/bin/systemctl start liteqube-wifi-monitor-signal

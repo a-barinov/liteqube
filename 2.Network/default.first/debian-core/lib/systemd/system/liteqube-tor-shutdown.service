@@ -1,0 +1,14 @@
+[Unit]
+Description=Save AP-specific data for Tor
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+RemainAfterExit=true
+ExecStart=/bin/true
+#ExecStop=-/usr/bin/qrexec-client-vm dom0 liteqube.SignalTor+999
+ExecStop=/bin/sh /etc/qubes-rpc/liteqube.SetAP
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+#!/bin/sh
+
+while true ; do
+    sleep 60
+    WIFI_SIGNAL="$(nmcli -t -f active,signal d wifi list | grep ^yes | cut -d\: -f2 )"
+    [ -z "${WIFI_SIGNAL}" ] || qrexec-client-vm dom0 "liteqube.SignalWifi+SI-${WIFI_SIGNAL}"
+done

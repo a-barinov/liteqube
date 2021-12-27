@@ -1,0 +1,159 @@
+#!/bin/sh
+
+get_radio_status()
+{
+    WIFI_DEVICE="$(nmcli -t -f type,dbus-path d status | grep ^wifi | cut -d\: -f2 )"
+    case "$(nmcli r wifi)" in
+        "enabled")
+            WIFI_STATE="on"
+            ;;
+        "disabled")
+            WIFI_STATE="off"
+            ;;
+    esac
+}
+
+get_ap_name()
+{
+    WIFI_AP="$(nmcli -t -f state,name c show | grep ^activated | cut -d\: -f2 )"
+}
+
+get_ap_status()
+{
+    WIFI_STATUS="$(nmcli -t -f active,state c show | grep ^yes | cut -d\: -f2 )"
+    if [ x"${WIFI_STATUS}" = x"activating" ] ; then
+        WIFI_STATUS="connecting"
+    elif [ x"${WIFI_STATUS}" = x"activated" ] ; then
+        WIFI_STATUS="connected"
+    else
+        WIFI_STATUS="disconnected"
+    fi
+}
+
+get_signal_strength()
+{
+    WIFI_SIGNAL="$(nmcli -t -f active,signal d wifi list | grep ^yes | cut -d\: -f2 )"
+}
+
+get_radio_status
+if [ x"${WIFI_STATE}" = x"off" ] ; then
+    qrexec-client-vm -tT dom0 "liteqube.SignalWifi+EN-0"
+else
+    qrexec-client-vm -tT dom0 "liteqube.SignalWifi+EN-1"
+    get_ap_name
+    get_ap_status
+    if [ x"${WIFI_STATUS}" = x"connected" ] ; then
+        [ x"${WIFI_AP}" = x"" ] || qrexec-client-vm -tT core-tor "liteqube.TorSetAP+${WIFI_AP}"
+        qrexec-client-vm -tT dom0 "liteqube.SignalWifi+AP-${WIFI_AP}"
+        qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-100"
+        get_signal_strength
+        [ -z "${WIFI_SIGNAL}" ] || qrexec-client-vm -tT dom0 "liteqube.SignalWifi+SI-${WIFI_SIGNAL}"
+    else
+        [ x"${WIFI_AP}" = x"" ] || qrexec-client-vm -tT core-tor "liteqube.TorSetAP+${WIFI_AP}"
+        [ x"${WIFI_STATUS}" = x"disconnected" ] && qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-0"
+        [ x"${WIFI_STATUS}" = x"connecting" ] && qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-30"
+    fi
+fi
+
+FIRST_TIME="yes"
+
+dbus-monitor --system "type='signal',path='/org/freedesktop/NetworkManager',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'" \
+                      "type='signal',path='${WIFI_DEVICE}',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'" \
+                      "type='signal',path='/org/freedesktop',interface='org.freedesktop.DBus.ObjectManager',member='InterfacesAdded'" |\
+while read LINE ; do
+    case "${LINE}" in
+
+        signal*${WIFI_DEVICE}*)
+            SIGNAL="DEVICE_STATE"
+            ;;
+        signal*)
+            SIGNAL="OTHER"
+            ;;
+
+        "string \"WirelessEnabled\"")
+            read STATE
+            case "${STATE}" in
+                *true*)
+                    if ! [ x"${WIFI_STATE}" = x"on" ] ; then
+                        WIFI_STATE="on"
+                        qrexec-client-vm -tT dom0 "liteqube.SignalWifi+EN-1"
+                    fi
+                    ;;
+                *false*)
+                    if ! [ x"${WIFI_STATE}" = x"off" ] ; then
+                        WIFI_STATE="off"
+                        qrexec-client-vm -tT dom0 "liteqube.SignalWifi+EN-0"
+                    fi
+                    ;;
+            esac
+            ;;
+
+        "string \"State\"")
+            if [ x"${SIGNAL}" = x"DEVICE_STATE" ] ; then
+                read STATUS
+                STATUS="${STATUS#variant             uint32 }"
+                if [ "${STATUS}" -eq "100" ] ; then
+                    STATUS="connected"
+                elif [ "${STATUS}" -lt "30" ] ; then
+                    STATUS="disconnected"
+                elif [ "${STATUS}" -gt "20" ] ; then
+                    STATUS="connecting"
+                fi
+                if ! [ x"${WIFI_STATUS}" = x"${STATUS}" ] ; then
+                    WIFI_STATUS="${STATUS}"
+                    [ x"${WIFI_STATUS}" = x"disconnected" ] && qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-0"
+                    [ x"${WIFI_STATUS}" = x"connected" ] && qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-100"
+                    if [ x"${WIFI_STATUS}" = x"connecting" ] ; then
+                        if [ x"${FIRST_TIME}" = x"yes" ] ; then
+                            [ -z "${TIMESTAMP}" ] && TIMESTAMP=1
+                            if [ $(( $(date +%s) - ${TIMESTAMP} )) -gt 5 ] ; then
+                                qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-30"
+                            fi
+                            FIRST_TIME="no"
+                        else
+                            qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-30"
+                        fi
+                    fi
+                    if [ x"${STATUS}" = x"disconnected" ] ; then
+                        WIFI_AP=""
+                        qrexec-client-vm -tT dom0 "liteqube.SignalWifi+AP-${WIFI_AP}"
+                        [ x"${WIFI_AP}" = x"" ] || qrexec-client-vm -tT core-tor "liteqube.TorSetAP+${WIFI_AP}"
+                    elif [ x"${STATUS}" = x"connected" ] ; then
+                        [ x"${WIFI_AP}" = x"" ] || qrexec-client-vm -tT core-tor "liteqube.TorSetAP+${WIFI_AP}"
+                    fi
+                fi
+            fi
+            ;;
+
+        "string \"Id\"")
+            read AP
+            WIFI_AP="${AP#variant                   string }"
+            WIFI_AP="${WIFI_AP#\"}"
+            WIFI_AP="${WIFI_AP%\"}"
+            qrexec-client-vm -tT dom0 "liteqube.SignalWifi+AP-${WIFI_AP}"
+            qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-100"
+            TIMESTAMP="$(date +%s)"
+            ;;
+
+        "string \"Ssid\"")
+            read AP
+            AP="${AP#variant                   array of bytes }"
+            AP="${AP#\"}"
+            AP="${AP%\"}"
+            if [ x"${WIFI_AP}" = x"${AP}" ] ; then
+                SIGNAL="SIGNAL"
+            fi
+            ;;
+
+        "string \"Strength\"")
+            if [ x"${SIGNAL}" = x"SIGNAL" ] ; then
+                read STRENGTH
+                WIFI_SIGNAL="${STRENGTH#variant                   byte }"
+                echo "Wifi Signal: ${WIFI_SIGNAL}"
+# Reporting other APs again?
+                qrexec-client-vm -tT dom0 "liteqube.SignalWifi+SI-${WIFI_SIGNAL}"
+            fi
+            ;;
+
+    esac
+done

@@ -1,0 +1,7 @@
+Defaults always_set_home,ignore_dot,timestamp_timeout=0,env_reset
+
+user ALL=(root) NOPASSWD: /etc/qubes-rpc/liteqube.TorSetAP
+user ALL=(root) NOPASSWD: /bin/systemctl poweroff
+user ALL=(root) NOPASSWD: /bin/systemctl start liteqube-split-ssh.socket
+user ALL=(root) NOPASSWD: /bin/systemctl stop liteqube-split-ssh.socket
+user ALL=(root) NOPASSWD: /sbin/shutdown

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+/sbin/shutdown +2
+
+exit 0

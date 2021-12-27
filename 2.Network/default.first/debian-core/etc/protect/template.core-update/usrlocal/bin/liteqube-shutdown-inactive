@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Shutdown VM after these seconds of inactivity
+IDLE_TIME=300
+
+while true ; do
+    NEW_TRAFFIC=$(( $(cat /proc/net/dev | grep eth0 | cut -c8-16) * 1 ))
+    NEW_TIME="$(date +%s)"
+    if [ x"${TRAFFIC}" = x"${NEW_TRAFFIC}" ] ; then
+        [ $(( ${NEW_TIME} - ${TIME} )) -ge ${IDLE_TIME} ] && sudo systemctl poweroff
+    else
+        TIME="${NEW_TIME}"
+        TRAFFIC="${NEW_TRAFFIC}"
+    fi
+    sleep 60
+done
