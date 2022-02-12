@@ -1,0 +1,50 @@
+#!/bin/sh
+
+# Set pulseaudio volume for the default sink. $1 can be one of:
+#   'MUTE' to mute
+#   'UNMUTE' to unmute
+#   'UP' to increase volume by 5%, rounded down to %5 and not above 100%
+#   'DOWN' to decrease volume by 5%, rounded down to %5 and not below 5%
+#   NUM in the range of 5-100 to set volume to NUM%;
+# after successful operation print [M|U]VOLUME
+
+SINK="$(pacmd stat | grep 'Default sink name' | cut -d' ' -f 4)"
+VOLUME="$(pacmd list-sinks | awk '/^\s+name: /{indefault = $2 =="<'"${SINK}"'>"}/^\s+volume: / && indefault {print $5; exit}' | cut -d'%' -f1)"
+
+case "${1}" in
+    MUTE)
+        pacmd set-sink-mute "${SINK}" 1
+        ;;
+    UNMUTE)
+        pacmd set-sink-mute "${SINK}" 0
+        ;;
+    UP)
+        NEW_VOLUME="$(( VOLUME + 5 ))"
+        NEW_VOLUME="$(( NEW_VOLUME / 5 * 5 ))"
+        [ "${NEW_VOLUME}" -gt 100 ] && NEW_VOLUME=100
+        pacmd set-sink-volume "${SINK}" "$(( NEW_VOLUME * 65536 / 100 ))"
+        ;;
+    DOWN)
+        NEW_VOLUME="$(( VOLUME - 5 ))"
+        NEW_VOLUME="$(( NEW_VOLUME / 5 * 5 ))"
+        [ "${NEW_VOLUME}" -lt 5 ] && NEW_VOLUME=5
+        pacmd set-sink-volume "${SINK}" "$(( NEW_VOLUME * 65536 / 100 ))"
+        ;;
+    *)
+        if [ $(expr "${1}" : '1\?[0-9]\?[0-9]') = $(expr length "$1") ] ; then
+            NEW_VOLUME="${1}"
+            [ "${NEW_VOLUME}" -gt 100 ] && NEW_VOLUME=100
+            [ "${NEW_VOLUME}" -lt 5 ] && NEW_VOLUME=5
+            pacmd set-sink-volume "${SINK}" "$(( NEW_VOLUME * 65536 / 100 ))"
+        else
+            echo "Unknown command: ${1}" >&2
+            exit 1
+        fi
+        ;;
+esac
+
+VOLUME="$(pacmd list-sinks | awk '/^\s+name: /{indefault = $2 =="<'"${SINK}"'>"}/^\s+volume: / && indefault {print $5; exit}' | cut -d'%' -f1)"
+MUTE="$(pacmd list-sinks | awk '/^\s+name: /{indefault = $2 =="<'"${SINK}"'>"}/^\s+muted: / && indefault {print $2; exit}')"
+[ x"${MUTE}" = x"yes" ] && echo "M${VOLUME}" || echo "U${VOLUME}"
+
+exit 0

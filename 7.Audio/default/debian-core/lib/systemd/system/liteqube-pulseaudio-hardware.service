@@ -1,0 +1,12 @@
+[Unit]
+Description=Pulseaudio daemon acessing hardware
+
+[Service]
+Type=simple
+User=user
+Group=user
+StandardOutput=journal
+StandardError=journal
+ExecStart=/usr/bin/pulseaudio --start --daemonize=false --disallow-exit --log-target=syslog --no-cpu-limit --exit-idle-time=-1
+Restart=always
+RestartSec=10

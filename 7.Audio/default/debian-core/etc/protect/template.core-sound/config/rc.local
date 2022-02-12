@@ -1,0 +1,5 @@
+#!/bin/sh
+
+systemctl start liteqube-pulseaudio-hardware
+systemctl start liteqube-pulseaudio-daemon
+#systemctl start liteqube-pulseaudio-monitor
