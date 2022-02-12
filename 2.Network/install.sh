@@ -7,8 +7,8 @@ USE_MIRAGE="False"
 # Set to "True" to use DispVM for NetVm
 NETVM_DISPOSABLE="True"
 
-# Space-separated list of packages [with network cards firmware] to install
-FIRMWARE_PACKAGES=""
+# Space-separated list of package names [with network cards firmware] to install
+FIRMWARE_PACKAGES="firmware-iwlwifi"
 
 # Set to "True" to not require PCI device reset
 NET_NO_STRICT_RESET="True"
@@ -155,6 +155,8 @@ else  # Plain linux firewall
     qvm-prefs --quiet --set "${VM_FW_NET}" memory 512
     qvm-prefs --quiet --set "${VM_FW_NET}" vcpus 1
     qvm-prefs --quiet --set "${VM_FW_NET}" provides_network True
+    #qvm-prefs --quiet --set "${VM_FW_NET}" guivm ''
+    qvm-prefs --quiet --set "${VM_FW_NET}" audiovm ''
 
 
     if ! vm_exists "${VM_FW_TOR}" ; then
@@ -171,6 +173,8 @@ else  # Plain linux firewall
     qvm-prefs --quiet --set "${VM_FW_TOR}" memory 512
     qvm-prefs --quiet --set "${VM_FW_TOR}" vcpus 1
     qvm-prefs --quiet --set "${VM_FW_TOR}" provides_network True
+    #qvm-prefs --quiet --set "${VM_FW_TOR}" guivm ''
+    qvm-prefs --quiet --set "${VM_FW_TOR}" audiovm ''
 
 
     message "CONFIGURING ${YELLOW}dom0"
@@ -206,6 +210,8 @@ message "CONFIGURING ${YELLOW}${VM_NET}"
 qvm-prefs --quiet --set "${VM_NET}" maxmem 0
 qvm-prefs --quiet --set "${VM_NET}" memory 512
 qvm-prefs --quiet --set "${VM_NET}" netvm ''
+#qvm-prefs --quiet --set "${VM_NET}" guivm ''
+qvm-prefs --quiet --set "${VM_NET}" audiovm ''
 qvm-prefs --quiet --set "${VM_NET}" vcpus 1
 qvm-prefs --quiet --set "${VM_NET}" virt_mode hvm
 qvm-prefs --quiet --set "${VM_NET}" provides_network True
@@ -390,6 +396,8 @@ message "CONFIGURING ${YELLOW}${VM_TOR}"
 qvm-prefs --quiet --set "${VM_TOR}" maxmem 0
 qvm-prefs --quiet --set "${VM_TOR}" memory 512
 qvm-prefs --quiet --set "${VM_TOR}" netvm "${VM_FW_NET}"
+#qvm-prefs --quiet --set "${VM_TOR}" guivm ''
+qvm-prefs --quiet --set "${VM_TOR}" audiovm ''
 qvm-prefs --quiet --set "${VM_TOR}" vcpus 1
 qvm-prefs --quiet --set "${VM_TOR}" virt_mode pvh
 qvm-prefs --quiet --set "${VM_TOR}" provides_network True
@@ -433,6 +441,8 @@ message "CONFIGURING ${YELLOW}${VM_UPDATE}"
 qvm-prefs --quiet --set "${VM_UPDATE}" maxmem 0
 qvm-prefs --quiet --set "${VM_UPDATE}" memory 1024
 qvm-prefs --quiet --set "${VM_UPDATE}" netvm "${VM_FW_TOR}"
+#qvm-prefs --quiet --set "${VM_UPDATE}" guivm ''
+qvm-prefs --quiet --set "${VM_UPDATE}" audiovm ''
 qvm-prefs --quiet --set "${VM_UPDATE}" vcpus 2
 qvm-prefs --quiet --set "${VM_UPDATE}" virt_mode pvh
 

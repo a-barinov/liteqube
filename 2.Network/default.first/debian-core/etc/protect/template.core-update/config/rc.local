@@ -1,5 +1,12 @@
 #!/bin/sh
 
+NS1="10.139.1.1"
+NS2="10.139.1.2"
+if [ -e /var/run/qubes/qubes-ns ] ; then
+    . /var/run/qubes/qubes-ns
+fi
+echo -e "nameserver ${NS1}\nnameserver ${NS2}" > /run/resolv.conf
+
 /bin/umount /var/tmp
 /bin/mount / -o rw,remount
 

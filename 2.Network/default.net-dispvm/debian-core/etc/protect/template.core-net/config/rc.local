@@ -1,15 +1,8 @@
 #!/bin/bash
 
-if [ -e /lib/systemd/system/NetworkManager.service.d/30_qubes.conf ] ; then
-    mount / -o rw,remount
-    rm -f /lib/systemd/system/NetworkManager.service.d/30_qubes.conf >/dev/null 2>&1
-    mount / -o ro,remount
-fi
-
 while ! ps -A | grep qrexec-agent >/dev/null 2>&1 ; do
     sleep 1
 done
-
 sleep 1
 
 mkdir -p -m 700 /run/liteqube
@@ -24,6 +17,9 @@ done
 
 /bin/rm /run/resolv.conf
 /bin/ln -s /run/NetworkManager/resolv.conf /run/resolv.conf
+
+/bin/systemctl enable qubes-iptables
+/bin/systemctl start qubes-iptables
 
 /bin/systemctl enable qubes-network
 /bin/systemctl start qubes-network

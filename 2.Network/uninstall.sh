@@ -4,8 +4,6 @@ SYS_NET="sys-net"
 SYS_FIREWALL="sys-firewall"
 . ../.lib/lib.sh
 
-set -x
-
 sudo mcedit /etc/yum.repos.d/qubes-dom0.repo
 sudo mcedit /etc/yum.repos.d/qubes-templates.repo
 
