@@ -1,9 +1,6 @@
 #!/bin/sh
 
 
-# Root partidion size of template vm in Mb
-ROOT_DISK_MB=2560
-
 # Package to install in template vm for text editing
 DEFAULT_EDITOR_PKG="nano"
 
@@ -38,6 +35,7 @@ qvm-prefs --quiet --set "${VM_CORE}" label "${COLOR_TEMPLATE}"
 qvm-prefs --quiet --set "${VM_CORE}" maxmem 0
 qvm-prefs --quiet --set "${VM_CORE}" memory 1024
 qvm-prefs --quiet --set "${VM_CORE}" netvm ''
+qvm-prefs --quiet --set "${VM_CORE}" audiovm ''
 qvm-prefs --quiet --set "${VM_CORE}" vcpus 1
 
 
@@ -55,6 +53,7 @@ add_line dom0 "/etc/qubes-rpc/policy/liteqube.Error" "${VM_XORG} dom0 allow"
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.Error" "${VM_KEYS} dom0 allow"
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.SplitXorg" "${VM_DVM} ${VM_XORG} allow"
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.SplitXorg" "${VM_KEYS} ${VM_XORG} allow"
+[ -x /bin/zenity ] || sudo qubes-dom0-update --console --show-output zenity
 dom0_command lq-xterm
 
 
@@ -64,11 +63,11 @@ qvm-start --quiet --skip-if-running "${VM_CORE}"
 
 message "CONFIGURING ${YELLOW}${VM_CORE}${PREFIX} (2/2)"
 push_command "${VM_CORE}" "mount / -o rw,remount"
+push_command "${VM_CORE}" "sh -c \"rm -rf /root/*\""
 push_files "${VM_CORE}"
 push_command "${VM_CORE}" "usermod -a -G qubes user"
 push_command "${VM_CORE}" "rm -rf /home.orig"
 push_command "${VM_CORE}" "rm -rf /usr/local.orig"
-push_command "${VM_CORE}" "sh -c \"rm -rf /root/*\""
 add_line "${VM_CORE}" "/etc/hosts" "127.0.1.1       ${VM_CORE}"
 add_line "${VM_CORE}" "/etc/hosts" "127.0.1.1       ${VM_DVM}"
 add_line "${VM_CORE}" "/etc/hosts" "127.0.1.1       ${VM_XORG}"
@@ -106,18 +105,6 @@ push_command "${VM_CORE}" "aptitude -q -y purge dbus-x11"
 push_command "${VM_CORE}" "aptitude -q -y full-upgrade"
 
 
-message "DISABLING SERVICES IN ${YELLOW}${VM_CORE}"
-for SERVICE in haveged qubes-gui-agent qubes-rootfs-resize qubes-updates-proxy-forwarder.socket qubes-updates-proxy tinyproxy remote-fs.target qubes-early-vm-config e2scrub_reap e2scrub_all.timer fstrim.timer ; do
-    push_command "${VM_CORE}" "systemctl stop ${SERVICE} >/dev/null 2>&1" >/dev/null 2>&1 || true
-    push_command "${VM_CORE}" "systemctl disable ${SERVICE} >/dev/null 2>&1" >/dev/null 2>&1 || true
-done
-for SERVICE in cron qubes-meminfo-writer update-check.timer remote-fs systemd-timesyncd logrotate.timer systemd-fsck-root systemd-journal-flash systemd-update-utmp systemd-tmpfiles-clean systemd-tmpfiles-clean.timer qubes-update-check.timer dev-xvdc1-swap systemd-update-utmp-runlevel systemd-rfkill ; do
-    push_command "${VM_CORE}" "systemctl stop ${SERVICE} >/dev/null 2>&1" >/dev/null 2>&1 || true
-    push_command "${VM_CORE}" "systemctl disable ${SERVICE} >/dev/null 2>&1" >/dev/null 2>&1 || true
-    push_command "${VM_CORE}" "systemctl mask ${SERVICE} >/dev/null 2>&1" >/dev/null 2>&1 || true
-done
-
-
 message "ENABLING TEMPLATING SERVICE IN ${YELLOW}${VM_CORE}"
 push_command "${VM_CORE}" "systemctl enable liteqube-vm-template >/dev/null 2>&1" >/dev/null 2>&1
 
@@ -127,12 +114,8 @@ qvm-shutdown --quiet --wait --force "${VM_CORE}"
 
 
 message "INSTALLING PARTED AND GDISK TOOLS IN ${YELLOW}dom0"
-if ! [ -x /usr/sbin/parted ] ; then
-    sudo qubes-dom0-update --console --show-output parted
-fi
-if ! [ -x /usr/sbin/gdisk ] ; then
-    sudo qubes-dom0-update --console --show-output gdisk
-fi
+[ -x /usr/sbin/parted ] || sudo qubes-dom0-update --console --show-output parted
+[ -x /usr/sbin/gdisk ] || sudo qubes-dom0-update --console --show-output gdisk
 
 
 if [ x"${VM_CORE_CREATED}" = x"true" ] ; then
@@ -183,9 +166,10 @@ message "CONFIGURING ${YELLOW}${VM_DVM}"
 qvm-prefs --quiet --set "${VM_DVM}" maxmem 0
 qvm-prefs --quiet --set "${VM_DVM}" memory 512
 qvm-prefs --quiet --set "${VM_DVM}" netvm ''
+qvm-prefs --quiet --set "${VM_DVM}" audiovm ''
 qvm-prefs --quiet --set "${VM_DVM}" vcpus 1
 qvm-prefs --quiet "${VM_DVM}" template_for_dispvms True
-qvm-start --quiet --skip-if-running "${VM_DVM}"
+qvm-start --quiet --skip-if-running "${VM_DVM}" || true
 
 
 if [ x"${VM_DVM_CREATED}" = x"true" ] ; then
@@ -214,6 +198,7 @@ message "CONFIGURING ${YELLOW}${VM_XORG}"
 qvm-prefs --quiet --set "${VM_XORG}" maxmem 0
 qvm-prefs --quiet --set "${VM_XORG}" memory 512
 qvm-prefs --quiet --set "${VM_XORG}" netvm ''
+qvm-prefs --quiet --set "${VM_XORG}" audiovm ''
 qvm-prefs --quiet --set "${VM_XORG}" vcpus 1
 
 
@@ -231,6 +216,8 @@ message "CONFIGURING ${YELLOW}${VM_KEYS}"
 qvm-prefs --quiet --set "${VM_KEYS}" maxmem 0
 qvm-prefs --quiet --set "${VM_KEYS}" memory 128
 qvm-prefs --quiet --set "${VM_KEYS}" netvm ''
+#qvm-prefs --quiet --set "${VM_KEYS}" guivm ''
+qvm-prefs --quiet --set "${VM_KEYS}" audiovm ''
 qvm-prefs --quiet --set "${VM_KEYS}" vcpus 1
 qvm-start --quiet --skip-if-running "${VM_KEYS}"
 sleep 3
@@ -253,6 +240,7 @@ qvm-start --quiet --skip-if-running "${VM_KEYS}"
 sleep 3
 push_command "${VM_KEYS}" "rm -rf /rw/QUARANTINE"
 qvm-shutdown --quiet --wait --force "${VM_KEYS}"
+
 
 
 message "CUSTOMISING INSTALLATION"

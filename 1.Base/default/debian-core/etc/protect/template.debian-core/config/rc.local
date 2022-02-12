@@ -11,8 +11,41 @@ if [ -e /lib/systemd/system/NetworkManager.service.d/30_qubes.conf ] ; then
     rm -f /lib/systemd/system/NetworkManager.service.d/30_qubes.conf >/dev/null 2>&1
 fi
 
+/sbin/fstrim --quiet /
+/sbin/fstrim --quiet /rw
+
 > /var/log/wtmp
 
 /bin/systemctl start qubes-gui-agent
 
 /bin/systemctl start qubes-updates-proxy-forwarder.socket
+
+W="2560"
+H="1600"
+DEPTH="24"
+GUI_DOMID="0"
+
+DUMMY_MAX_CLOCK=300
+PREFERRED_HSYNC=50
+RES="$W"x"$H"
+HTOTAL=$((W+3))
+VTOTAL=$((H+3))
+CLOCK=$((PREFERRED_HSYNC*HTOTAL/1000))
+[ $CLOCK -gt $DUMMY_MAX_CLOCK ] && CLOCK=$DUMMY_MAX_CLOCK
+MODELINE="$CLOCK $W $((W+1)) $((W+2)) $HTOTAL $H $((H+1)) $((H+2)) $VTOTAL"
+HSYNC_START=$((CLOCK*1000/HTOTAL))
+HSYNC_END=$((HSYNC_START+1))
+VREFR_START=$((CLOCK*1000000/HTOTAL/VTOTAL))
+VREFR_END=$((VREFR_START+1))
+MEM="$(qubesdb-read /qubes-gui-videoram-min 2>/dev/null)"
+
+sed -e  s/%MEM%/$MEM/ \
+        -e  s/%DEPTH%/"$DEPTH"/ \
+        -e  s/%MODELINE%/"$MODELINE"/ \
+        -e  s/%HSYNC_START%/"$HSYNC_START"/ \
+        -e  s/%HSYNC_END%/"$HSYNC_END"/ \
+        -e  s/%VREFR_START%/"$VREFR_START"/ \
+        -e  s/%VREFR_END%/"$VREFR_END"/ \
+        -e  s/%RES%/"QB$RES"/ \
+        -e  s/%GUI_DOMID%/"$GUI_DOMID"/ < /etc/X11/xorg-qubes.conf.template \
+        > /etc/X11/xorg-qubes.conf

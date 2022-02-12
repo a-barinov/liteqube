@@ -2,8 +2,6 @@
 
 . ../.lib/lib.sh
 
-set -x
-
 qvm-shutdown --quiet --wait --force "${VM_XORG}"
 qvm-shutdown --quiet --wait --force "${VM_KEYS}"
 qvm-shutdown --quiet --wait --force "${VM_DVM}"

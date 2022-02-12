@@ -8,3 +8,5 @@ APT::Install-Recommends "false";
 APT::AutoRemove "";
 APT::AutoRemove::RecommendsImportant "false";
 APT::AutoRemove::SuggestsImportant "false";
+DPkg::Post-Invoke {"/root/post-install.sh";};
+

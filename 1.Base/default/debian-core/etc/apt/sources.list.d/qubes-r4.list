@@ -1,34 +1,34 @@
 # Main qubes updates repository
-#deb [arch=amd64] https://deb.qubes-os.org/r4.0/vm stretch main
-#deb-src https://deb.qubes-os.org/r4.0/vm stretch main
+#deb [arch=amd64] https://deb.qubes-os.org/r4.1/vm bullseye main
+#deb-src https://deb.qubes-os.org/r4.1/vm bullseye main
 
 # Qubes updates candidates repository
-#deb [arch=amd64] https://deb.qubes-os.org/r4.0/vm stretch-testing main
-#deb-src https://deb.qubes-os.org/r4.0/vm stretch-testing main
+#deb [arch=amd64] https://deb.qubes-os.org/r4.1/vm bullseye-testing main
+#deb-src https://deb.qubes-os.org/r4.1/vm bullseye-testing main
 
 # Qubes security updates testing repository
-#deb [arch=amd64] https://deb.qubes-os.org/r4.0/vm stretch-securitytesting main
-#deb-src https://deb.qubes-os.org/r4.0/vm stretch-securitytesting main
+#deb [arch=amd64] https://deb.qubes-os.org/r4.1/vm bullseye-securitytesting main
+#deb-src https://deb.qubes-os.org/r4.1/vm bullseye-securitytesting main
 
 # Qubes experimental/unstable repository
-#deb [arch=amd64] https://deb.qubes-os.org/r4.0/vm stretch-unstable main
-#deb-src https://deb.qubes-os.org/r4.0/vm stretch-unstable main
+#deb [arch=amd64] https://deb.qubes-os.org/r4.1/vm bullseye-unstable main
+#deb-src https://deb.qubes-os.org/r4.1/vm bullseye-unstable main
 
 
 # Qubes Tor updates repositories
 # Main qubes updates repository
-#deb [arch=amd64] http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.0/vm stretch main
-#deb-src http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.0/vm stretch main
+#deb [arch=amd64] tor+http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.1/vm bullseye main
+#deb-src tor+http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.1/vm bullseye main
 
 # Qubes updates candidates repository
-#deb [arch=amd64] http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.0/vm stretch-testing main
-#deb-src http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.0/vm stretch-testing main
+#deb [arch=amd64] tor+http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.1/vm bullseye-testing main
+#deb-src tor+http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.1/vm bullseye-testing main
 
 # Qubes security updates testing repository
-#deb [arch=amd64] http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.0/vm stretch-securitytesting main
-#deb-src http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.0/vm stretch-securitytesting main
+#deb [arch=amd64] tor+http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.1/vm bullseye-securitytesting main
+#deb-src tor+http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.1/vm bullseye-securitytesting main
 
 # Qubes experimental/unstable repository
-#deb [arch=amd64] http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.0/vm stretch-unstable main
-#deb-src http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.0/vm stretch-unstable main
+#deb [arch=amd64] tor+http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.1/vm bullseye-unstable main
+#deb-src tor+http://deb.qubesosfasa4zl44o4tws22di6kepyzfeqv3tg4e3ztknltfxqrymdad.onion/r4.1/vm bullseye-unstable main
 

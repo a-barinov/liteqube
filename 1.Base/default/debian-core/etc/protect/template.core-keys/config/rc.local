@@ -1,5 +1,7 @@
 #!/bin/sh
 
+/sbin/fstrim --quiet /rw
+
 /sbin/shutdown +2
 
 exit 0
