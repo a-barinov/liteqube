@@ -1,0 +1,6 @@
+drwxr-x---	root	root	./debian-core/etc/protect/template.core-decrypt
+drwxr-xr-x	root	root	./debian-core/etc/protect/template.core-decrypt/config
+-rwxr-xr-x	root	root	./debian-core/etc/protect/template.core-decrypt/config/rc.local
+drwxrwsr-x	root	root	./debian-core/etc/protect/template.core-decrypt/usrlocal
+drwxrwsr-x	root	root	./debian-core/etc/protect/template.core-decrypt/usrlocal/bin
+-rwxr-xr-x	root	root	./debian-core/etc/protect/template.core-decrypt/usrlocal/bin/liteqube-amount

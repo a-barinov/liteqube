@@ -1,0 +1,4 @@
+#!/bin/sh
+
+/bin/systemctl enable dm-event.socket
+/bin/systemctl start dm-event.socket

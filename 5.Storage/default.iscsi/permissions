@@ -1,0 +1,7 @@
+drwxr-x---	root	root	./debian-core/etc/protect/template.core-iscsi
+drwxr-xr-x	root	root	./debian-core/etc/protect/template.core-iscsi/config
+-rwxr-xr-x	root	root	./debian-core/etc/protect/template.core-iscsi/config/rc.local
+drwxrwsr-x	root	root	./debian-core/etc/protect/template.core-iscsi/usrlocal
+drwxrwsr-x	root	root	./debian-core/etc/protect/template.core-iscsi/usrlocal/bin
+-rwxr-xr-x	root	root	./debian-core/etc/protect/template.core-iscsi/usrlocal/bin/liteqube-amount
+-rw-r--r--	root	root	./debian-core/lib/systemd/system/liteqube-at-shutdown.service

@@ -1,0 +1,20 @@
+[Unit]
+Description=Stop ISCSI service before shutdown
+DefaultDependencies=no
+Requires=multi-user.target qubes-network-uplink network.target network-online.target local-fs-pre.target qubes-iptables.service qubes-network-uplink@eth0.service
+After=qubes-network-uplink network.target network-online.target local-fs-pre.target qubes-iptables.service qubes-network-uplink@eth0.service
+Before=open-iscsi
+
+[Service]
+#KillMode=none
+Type=oneshot
+RemainAfterExit=true
+#ExecStart=/bin/true
+#ExecStart=/bin/systemctl stop open-iscsi
+ExecStop=/sbin/iscsiadm -m node -U all
+ExecStop=/bin/systemctl stop open-iscsi
+#TimeoutStartSec=0
+
+[Install]
+#WantedBy=reboot.target
+WantedBy=multi-user.target open-iscsi qubes-network-uplink network.target network-online.target local-fs-pre.target qubes-iptables.service qubes-network-uplink@eth0.service

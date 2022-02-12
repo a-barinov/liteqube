@@ -1,0 +1,65 @@
+#!/bin/sh
+
+
+if [ $# -ne 2 ]; then
+    exit 1
+fi
+
+
+DEV_NAME="$2"
+DEV_PATH="/dev/${DEV_NAME}"
+eval $(/sbin/blkid -o udev "${DEV_PATH}")
+LVM="lvm-${DEV_NAME}"
+
+
+case "$1" in
+    add)
+        if [ x"${ID_FS_TYPE}" = x"crypto_LUKS" ]; then
+            PASSWORD="$(/usr/bin/qrexec-client-vm core-keys liteqube.SplitPassword+"${ID_FS_UUID}")"
+            [ -z "${PASSWORD}" ] && PASSWORD="$(/usr/bin/qrexec-client-vm dom0 liteqube.SplitPassword+"${ID_FS_UUID}")"
+            if echo "${PASSWORD}" | /sbin/cryptsetup luksOpen "${DEV_PATH}" "${LVM}" - ; then
+                sleep 1
+                #TODO race condition, usually vg activates within a second
+                VG=$(pvdisplay /dev/mapper/${LVM} 2>/dev/null | grep "VG Name" | cut -c25-)
+                if [ x"${VG}" = x"" ] || (sleep 3 ; lvchange -a n "${VG}") ; then
+                    REALNAME="$(basename $(realpath /dev/mapper/${LVM}))"
+                    SIZE="$(/sbin/blockdev --getsize64 "/dev/mapper/${LVM}")"
+                    if [ $SIZE -lt 1024 ] ; then
+                        SIZE="$SIZE"'b'
+                    else
+                        SIZE=$((SIZE/1024))
+                        if [ $SIZE -lt 1024 ] ; then
+                            SIZE="$SIZE"'k'
+                        else
+                            SIZE=$((SIZE/1024))
+                            if [ $SIZE -lt 1024 ] ; then
+                                SIZE="$SIZE"'M'
+                            else
+                                SIZE=$((SIZE/1024))
+                                SIZE="$SIZE"'G'
+                            fi
+                        fi
+                    fi
+                    /usr/bin/qrexec-client-vm dom0 liteqube.SignalStorage+"A_${REALNAME}_LVM_${SIZE}" 1>/dev/null 2>&1
+                else
+                    /usr/bin/qrexec-client-vm dom0 liteqube.Error+"Failed to deactivate ${VG}" 1>/dev/null 2>&1
+                    exit 1
+                fi
+            else
+                /usr/bin/qrexec-client-vm dom0 liteqube.Error+"Failed to unlock ${DEV_NAME}" 1>/dev/null 2>&1
+                exit 1
+            fi
+        else
+            /usr/bin/qrexec-client-vm dom0 liteqube.Error+"${DEV_NAME} is not a LUKS device" 1>/dev/null 2>&1
+            exit 1
+        fi
+        ;;
+    remove)
+        REALNAME="$(basename $(realpath /dev/mapper/${LVM}))"
+        /usr/bin/qrexec-client-vm dom0 liteqube.StorageState+"R_${REALNAME}" 1>/dev/null 2>&1
+        ;;
+    *)
+        /usr/bin/qrexec-client-vm dom0 liteqube.Error+"Unknown action" 1>/dev/null 2>&1
+        exit 1
+        ;;
+esac

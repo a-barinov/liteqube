@@ -1,0 +1,26 @@
+#!/bin/sh
+
+NS1="10.139.1.1"
+NS2="10.139.1.2"
+if [ -e /var/run/qubes/qubes-ns ] ; then
+    . /var/run/qubes/qubes-ns
+fi
+echo -e "nameserver ${NS1}\nnameserver ${NS2}" > /run/resolv.conf
+
+while ! ps -A | grep qrexec-agent >/dev/null 2>&1 ; do
+    sleep 1
+done
+sleep 1
+
+ISCSI_DEFAULTS="$(find /etc/iscsi/ -name default -type l)"
+if [ -L "${ISCSI_DEFAULTS}" ] ; then
+    mkdir -p -m 700 "/run/liteqube"
+    qrexec-client-vm core-keys "liteqube.SplitFile+default" > "/run/liteqube/iscsi-default"
+    chmod 660 "/run/liteqube/iscsi-default"
+fi
+
+/bin/systemctl enable liteqube-at-shutdown
+/bin/systemctl start liteqube-at-shutdown
+
+/bin/systemctl enable open-iscsi
+/bin/systemctl start open-iscsi

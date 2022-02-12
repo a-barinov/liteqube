@@ -1,0 +1,149 @@
+#!/bin/sh
+
+
+#set -x
+
+
+ISCSI="core-iscsi"
+DECRYPTOR="core-decrypt"
+VIEWER="debian-full"
+USB="core-usb"
+
+
+TAB="	"
+NEWLINE="
+"
+
+
+list_devices()
+{
+    ATTACHMENTS="False"
+    ORIG_IFS="$IFS"
+    IFS="$NEWLINE"
+    ITEMS=""
+    for LINE in $(qvm-block list | tail -n +1) ; do
+        IFS=": "
+        set -- "junk" $LINE
+        VM="${2}"
+        DEVICE="${3}"
+        STORAGE="${4}"
+        NAME="${5/(/}"
+        NAME="${NAME/)/}"
+        TARGET="${6}"
+        if ! [ -z ${NAME} ] ; then
+            STORAGE="${STORAGE}:${NAME}"
+        fi
+        [ -z "${TARGET}" ] || ATTACHMENTS="True"
+        [ -z "${TARGET}" ] || continue
+        CONFIG="$(qvm-run --quiet --no-gui --pass-io --filter-escape-chars --no-color-output --user root --service ${VM} liteqube.StorageConfig+${DEVICE} 2>/dev/null)"
+        IFS=" "
+        set -- "junk" $CONFIG
+        FS="${2}"
+        SIZE="${3}"
+        ITEMS="$ITEMS${TAB}${VM}:${DEVICE}${TAB}${STORAGE}XXX${FS}, ${SIZE}"
+        IFS="$NEWLINE"
+    done
+    if [ x"${ATTACHMENTS}" = x"True" -o ! -z "${ITEMS}" ] ; then
+        ITEMS="$ITEMS${TAB}Unmount All${TAB}Unmount all"
+    fi
+    if [ -e "/var/lib/qubes/appvms/${ISCSI}" ] && ! [ -e "/run/qubes/qubesdb.${ISCSI}.pid" ] ; then
+        ITEMS="$ITEMS${TAB}Start iSCSI${TAB}Start iSCSI VM"
+    fi
+    IFS="$ORIG_IFS"
+    if [ -z "${ITEMS}" ] ; then
+        dialog  --keep-tite --title "Storage Devices" --msgbox "No storage devices available to mount" 0 30
+        exit 1
+    else
+        IFS="${TAB}"
+        SELECTION=$(dialog --keep-tite --column-separator XXX --title${TAB}"Storage Devices"${TAB}--menu${TAB}"Select storage device"${TAB}0${TAB}0${TAB}0${TAB}$ITEMS 3>&1 1>&2 2>&3 3>&-)
+        IFS="$ORIG_IFS"
+    fi
+}
+
+
+device_action()
+{
+    ORIG_IFS="$IFS"
+    IFS=": "
+    set -- "junk" ${1}
+    VM="${2}"
+    DEVICE="${3}"
+    CONFIG="$(qvm-run --quiet --no-gui --pass-io --filter-escape-chars --no-color-output --user root --service ${VM} liteqube.StorageConfig+${DEVICE} 2>/dev/null)"
+    IFS=" "
+    set -- "junk" $CONFIG
+    FS="${2}"
+    SIZE="${3}"
+    IFS="$ORIG_IFS"
+    if [ x"${FS}" = x"LUKS" ] ; then
+        if dialog --keep-tite --title "Storage Devices" --yesno "Decrypt ${VM}:${DEVICE}?" 0 0 ; then
+            (
+                LINES="$(qvm-block | grep -c "${DECRYPTOR}")"
+                echo "10"
+                qvm-start --quiet --skip-if-running "${DECRYPTOR}"
+                echo "20"
+                qvm-block attach "${DECRYPTOR}" "${VM}:${DEVICE}"
+                for PROGRESS in 30 40 50 60 70 80 90 100 ; do
+                    sleep 5
+                    if [ x"$(qvm-block | grep -c "${DECRYPTOR}")" = x"$((LINES+2))" ] ; then
+                        echo "100"
+                        break
+                    else
+                        echo "$PROGRESS"
+                    fi
+                done
+            ) | dialog  --keep-tite --title "Storage Devices" --gauge "Waiting for ${VM}:${DEVICE} to be decrypted..." 0 50
+            [ x"$(qvm-block | grep -c "${DECRYPTOR}")" = x"$((LINES+2))" ] || dialog  --keep-tite --title "Storage Devices" --msgbox "Error: ${VM}:${DEVICE} not decrypted" 0 40
+        fi
+    else
+        dialog --keep-tite --title "Storage Devices" --yesno "Open ${VM}:${DEVICE}?" 0 0
+        echo $?
+        exit 0
+    fi
+}
+
+
+while true ; do
+    list_devices
+    if [ -z "$SELECTION" ] ; then
+        exit 0
+    fi
+    case "$SELECTION" in
+        Unmount*)
+            (
+                USB_DEVICES="$(qvm-block | grep "${USB}")"
+                echo "10"
+                qvm-shutdown --quiet --wait --timeout 30 --force "${VIEWER}" >/dev/null 2>&1
+                echo "40"
+                qvm-shutdown --quiet --wait --timeout 30 --force "${DECRYPTOR}" >/dev/null 2>&1
+                echo "70"
+                qvm-shutdown --quiet --wait --timeout 30 --force "${ISCSI}" >/dev/null 2>&1
+                echo "90"
+                if ! [ -z "${USB_DEVICES}" ] ; then
+                    qvm-shutdown --quiet --wait --timout 30 --force "${USB}" >/dev/null 2>&1
+                    sleep 3
+                    qvm-start --quiet --skip-if-running "${USB}" >/dev/null 2>&1
+                fi
+                echo "100"
+            ) | dialog  --keep-tite --title "Storage Devices" --gauge "Terminating storage VMs..." 0 30
+            ;;
+        Start*)
+            (
+                echo "10"
+                qvm-start --quiet --skip-if-running "${ISCSI}"
+                for PROGRESS in 20 30 40 50 60 70 80 90 100 ; do
+                    sleep 5
+                    if qvm-block | grep "${ISCSI}" >/dev/null 2>&1 ; then
+                        echo "100"
+                        break
+                    else
+                        echo "$PROGRESS"
+                    fi
+                done
+            ) | dialog  --keep-tite --title "Storage Devices" --gauge "Waiting for iSCSI device..." 0 50
+            qvm-block | grep "${ISCSI}" >/dev/null 2>&1 || dialog  --keep-tite --title "Storage Devices" --msgbox "No iSCSI devices available to mount" 0 30
+            ;;
+        *)
+            device_action "$SELECTION"
+            ;;
+    esac
+done
