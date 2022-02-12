@@ -3,6 +3,9 @@
 # COMMON SETTINGS #
 ###################
 
+# Root partidion size of template vm in Mb
+ROOT_DISK_MB=2560
+
 # Private partition size of template and dvm template vms
 PRIVATE_DISK_MB=512
 
@@ -22,7 +25,11 @@ VM_USB="core-usb"
 VM_NET="core-net"
 VM_TOR="core-tor"
 VM_VPN="core-vpn"
+VM_ISCSI="core-iscsi"
+VM_DECRYPT="core-decrypt"
 VM_UPDATE="core-update"
+VM_RDP="core-rdp"
+VM_AUDIO="core-sound"
 VM_FW_BASE="fw-base"
 VM_FW_DVM="fw-dvm"
 VM_FW_NET="fw-net"
@@ -47,11 +54,57 @@ message()
 
 vm_exists()
 {
-    if [ -d "/var/lib/qubes/vm-templates/${1}" ] || [ -d "/var/lib/qubes/appvms/${1}" ] ; then
+    _VM="${1}"
+
+    if [ -d "/var/lib/qubes/vm-templates/${_VM}" ] || [ -d "/var/lib/qubes/appvms/${_VM}" ] ; then
         return 0
     else
         return 1
     fi
+}
+
+vm_create()
+{
+    _VM="${1}"
+    _TYPE="${2}"
+
+    if vm_exists "${_VM}" ; then
+        message "VM ${YELLOW}${_VM}${PREFIX} ALREADY EXISTS"
+    else
+        message "CREATING ${YELLOW}${_VM}"
+        case ${_TYPE} in
+            dispvm)
+                qvm-create --class DispVM --template "${VM_DVM}" --label "${COLOR_WORKERS}" "${VM_AUDIO}"
+                ;;
+            *)
+                message "ERROR: UNKNOWN VM TYPE ${YELLOW}${_TYPE}${PREFIX} FOR ${YELLOW}${_VM}${PREFIX}"
+                exit 1
+                ;;
+        esac
+    fi
+}
+
+vm_configure()
+{
+    _VM="${1}"
+
+    message "CONFIGURING ${YELLOW}${_VM}"
+    qvm-prefs --quiet --set "${_VM}" virt_mode "${2}"
+    qvm-prefs --quiet --set "${_VM}" maxmem 0
+    qvm-prefs --quiet --set "${_VM}" memory "${3}"
+    qvm-prefs --quiet --set "${_VM}" netvm "${4}"
+    #qvm-prefs --quiet --set "${_VM}" guivm "${5}"
+    qvm-prefs --quiet --set "${_VM}" audiovm ''
+    qvm-prefs --quiet --set "${_VM}" vcpus 1
+}
+
+vm_fail_if_missing()
+{
+    _VM="${1}"
+
+    vm_exists "${_VM}" && return
+    message "ERROR: ${YELLOW}${_VM}${PREFIX} NOT FOUND, PLEASE INSTALL IT FIRST"
+    exit 1
 }
 
 push_command()
@@ -115,11 +168,12 @@ push_files_to_domain()
 
 push_from_dir()
 {
-    DOMAIN="${2}"
     cd "${1}"
+    _VM="${2}"
+    [ x"${_VM}" = x"dom0" ] || qvm-start --quiet --skip-if-running "${_VM}"
     if [ -e "./permissions" ] ; then
-        cat "./permissions" | grep "${TAB}./${DOMAIN}" | while IFS= read -r LINE ; do
-            push_files_to_domain "${DOMAIN}" $LINE
+        cat "./permissions" | grep "${TAB}./${_VM}" | while IFS= read -r LINE ; do
+            push_files_to_domain "${_VM}" $LINE
         done
     else
         message "PERMISSIONS FILE ${YELLOW}${1}/permissions${PREFIX} NOT FOUND, EXITING"
@@ -140,55 +194,84 @@ push_custom_files()
 
 add_line()
 {
-    VM="${1}"
-    FILE="${2}"
-    LINE="${3}"
-    if [ x"${VM}" = x"dom0" ] ; then
-        if ! sudo cat "${FILE}" | grep "${LINE}" >/dev/null 2>&1 ; then
-            sudo /bin/sh -c "echo \"${LINE}\" >> \"${FILE}\""
+    _VM="${1}"
+    _FILE="${2}"
+    _LINE="${3}"
+
+    if [ x"${_VM}" = x"dom0" ] ; then
+        if ! sudo cat "${_FILE}" | grep "${_LINE}" >/dev/null 2>&1 ; then
+            sudo /bin/sh -c "echo \"${_LINE}\" >> \"${_FILE}\""
         fi
     else
-        qrexec-client -d "${VM}" root:"if ! cat \"${FILE}\" | grep \"${LINE}\" >/dev/null 2>&1 ; then echo \"${LINE}\" >> \"${FILE}\" ; fi"
+        qrexec-client -d "${_VM}" root:"if ! cat \"${_FILE}\" | grep \"${_LINE}\" >/dev/null 2>&1 ; then echo \"${_LINE}\" >> \"${_FILE}\" ; fi"
     fi
 }
 
 replace_text()
 {
-    VM="${1}"
-    FILE="${2}"
-    FIND="${3}"
-    REPLACE="${4}"
-    if [ x"${VM}" = x"dom0" ] ; then
-        sudo sed -i "s/${FIND}/${REPLACE}/g" "${FILE}"
+    _VM="${1}"
+    _FILE="${2}"
+    _FIND="${3}"
+    _REPLACE="${4}"
+
+    if [ x"${_VM}" = x"dom0" ] ; then
+        sudo sed -i "s/${_FIND}/${_REPLACE}/g" "${_FILE}"
     else
-        qrexec-client -d "${VM}" root:"sed -i \"s/${FIND}/${REPLACE}/g\" \"${FILE}\""
+        qrexec-client -d "${_VM}" root:"sed -i \"s/${_FIND}/${_REPLACE}/g\" \"${_FILE}\""
     fi
 }
 
 dom0_command()
 {
-    FILE="${1}"
-    if ! [ -d ~/bin ] ; then
-        mkdir ~/bin
-    fi
-    cp "./files/${FILE}" ~/bin
-}
+    _FILE="${1}"
 
-checksum_to_vm()
-{
-    LOCALFILE="${1}"
-    VM="${2}"
-    REMOTEFILE="${3}"
-    cat "${LOCALFILE}" | push_command "${VM}" "mkdir -p -m 700 \"$(dirname ${REMOTEFILE})\" ; chattr -i \"${REMOTEFILE}\" ; cat > \"${REMOTEFILE}\""
-    SHA256="$(sha256sum -b "${LOCALFILE}" | cut -d' ' -f1)"
-    SHA512="$(sha512sum -b "${LOCALFILE}" | cut -d' ' -f1)"
-    push_command "${VM_CORE}" "mkdir -p -m 700 /etc/protect/checksum.${VM}$(dirname ${REMOTEFILE}) ; rm -f \"/etc/protect/checksum.${VM}${REMOTEFILE}\" ; echo -e \"${SHA256}\n${SHA512}\" > \"/etc/protect/checksum.${VM}${REMOTEFILE}\""
+    [ -d ~/bin ] || mkdir ~/bin
+    cp "./files/${_FILE}" ~/bin
 }
 
 file_to_vm()
 {
-    LOCALFILE="${1}"
-    VM="${2}"
-    REMOTEFILE="${3}"
-    cat "${LOCALFILE}" | push_command "${VM}" "cat > \"${REMOTEFILE}\""
+    _LOCALFILE="${1}"
+    _VM="${2}"
+    _REMOTEFILE="${3}"
+
+    cat "${_LOCALFILE}" | push_command "${_VM}" "cat > \"${_REMOTEFILE}\""
+}
+
+dir_to_vm()
+{
+
+    _LOCALDIR="${1}"
+    _VM="${2}"
+    _REMOTEDIR="${3}"
+
+    tar c -C "${_LOCALDIR}" . | push_command "${_VM}" "tar x -C \"${_REMOTEDIR}\""
+}
+
+checksum_to_vm()
+{
+    _LOCALFILE="${1}"
+    _VM="${2}"
+    _REMOTEFILE="${3}"
+
+    cat "${_LOCALFILE}" | push_command "${_VM}" "mkdir -p -m 700 \"$(dirname ${_REMOTEFILE})\" ; chattr -i \"${_REMOTEFILE}\" ; cat > \"${_REMOTEFILE}\""
+    _SHA256="$(sha256sum -b "${_LOCALFILE}" | cut -d' ' -f1)"
+    _SHA512="$(sha512sum -b "${_LOCALFILE}" | cut -d' ' -f1)"
+    push_command "${VM_CORE}" "mkdir -p -m 700 /etc/protect/checksum.${_VM}$(dirname ${_REMOTEFILE}) ; rm -f \"/etc/protect/checksum.${_VM}${_REMOTEFILE}\" ; echo -e \"${_SHA256}\n${_SHA512}\" > \"/etc/protect/checksum.${_VM}${_REMOTEFILE}\""
+}
+
+install_packages()
+{
+    _VM="${1}"
+
+    shift
+    if [ x"${_VM}" = x"dom0" ] ; then 
+        echo "NOT IMPLEMENTED"
+    else
+        qvm-start --quiet --skip-if-running "${_VM}"
+        for _PACKAGE in $@ ; do
+            qrexec-client -d "${_VM}" root:"[ -e /var/lib/dpkg/info/${_PACKAGE}.list ]" || _PACKAGES_TO_INSTALL="${_PACKAGES_TO_INSTALL} ${_PACKAGE}"
+        done
+        [ -z "${_PACKAGES_TO_INSTALL}" ] || qrexec-client -d "${_VM}" root:"aptitude -q -y install ${_PACKAGES_TO_INSTALL}"
+    fi
 }
