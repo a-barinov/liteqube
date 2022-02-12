@@ -1,0 +1,15 @@
+# USB storage devices
+KERNEL=="sd[a-z]", SUBSYSTEMS=="usb", ACTION=="add", RUN+="/bin/systemctl start liteqube-amount@%k.service"
+KERNEL=="sd[a-z]", SUBSYSTEMS=="usb", ACTION=="remove", RUN+="/bin/systemctl stop liteqube-amount@%k.service"
+KERNEL=="sd[a-z][0-9]", SUBSYSTEMS=="usb", ACTION=="add", RUN+="/bin/systemctl start liteqube-amount@%k.service"
+KERNEL=="sd[a-z][0-9]", SUBSYSTEMS=="usb", ACTION=="remove", RUN+="/bin/systemctl stop liteqube-amount@%k.service"
+
+# iSCSI storage devices
+KERNEL=="sd[a-z]", SUBSYSTEMS=="block", ACTION=="add", RUN+="/bin/systemctl start liteqube-amount@%k.service"
+KERNEL=="sd[a-z]", SUBSYSTEMS=="block", ACTION=="remove", RUN+="/bin/systemctl stop liteqube-amount@%k.service"
+KERNEL=="sd[a-z][0-9]", SUBSYSTEMS=="block", ACTION=="add", RUN+="/bin/systemctl start liteqube-amount@%k.service"
+KERNEL=="sd[a-z][0-9]", SUBSYSTEMS=="block", ACTION=="remove", RUN+="/bin/systemctl stop liteqube-amount@%k.service"
+
+# XEN storage devices
+KERNEL=="xvd[i-z]", SUBSYSTEMS=="xen", ACTION=="add", RUN+="/bin/systemctl start liteqube-amount@%k.service"
+KERNEL=="xvd[i-z]", SUBSYSTEMS=="xen", ACTION=="remove", RUN+="/bin/systemctl stop liteqube-amount@%k.service"

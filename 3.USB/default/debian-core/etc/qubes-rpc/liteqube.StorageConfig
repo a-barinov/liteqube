@@ -1,0 +1,32 @@
+#!/bin/sh
+
+DEVICE="/dev/${1}"
+eval $(/sbin/blkid -o udev "${DEVICE}")
+
+SIZE="$(/sbin/blockdev --getsize64 "${DEVICE}")"
+if [ $SIZE -lt 1024 ] ; then
+    SIZE="$SIZE"'b'
+else
+    SIZE=$((SIZE/1024))
+    if [ $SIZE -lt 1024 ] ; then
+        SIZE="$SIZE"'k'
+    else
+        SIZE=$((SIZE/1024))
+        if [ $SIZE -lt 1024 ] ; then
+            SIZE="$SIZE"'M'
+        else
+            SIZE=$((SIZE/1024))
+            SIZE="$SIZE"'G'
+        fi
+    fi
+fi
+
+FS="${ID_FS_TYPE}${ID_PART_TABLE_TYPE}"
+
+if [ x"${FS}" = x"crypto_LUKS" ] ; then
+    FS="LUKS"
+fi
+
+echo "${FS} ${SIZE}"
+
+exit 0

@@ -1,0 +1,9 @@
+[Unit]
+Description=Mount block device %i
+ConditionPathExists=/usr/local/bin/liteqube-amount
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/local/bin/liteqube-amount add %i
+ExecStop=/usr/local/bin/liteqube-amount remove %i

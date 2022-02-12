@@ -1,0 +1,32 @@
+#!/bin/sh
+
+SEND_MESSAGE="True"
+
+LINE=$(cat /home/user/.dbus/session-bus/* | grep DBUS_SESSION_BUS_ADDRESS= | tail -n 1)
+BUS=${LINE:25}
+
+IFS="_"
+set -- "junk" ${1}
+ACTION=${2}
+DEVICE=${3}
+FS=${4}
+SIZE=${5}
+
+LINEBREAK="
+"
+
+case x"${ACTION}" in
+    x"A")
+        #[ x"${SEND_MESSAGE}" = x"True" ] && sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} notify-send -u normal -t 2000 -i dialog-information \"Device connected: ${QREXEC_REMOTE_DOMAIN}:$DEVICE $LINEBREAK$FS $SIZE\"" >/dev/null 2>&1
+        [ x"${SEND_MESSAGE}" = x"True" ] && sudo -u user /bin/sh -c "DISPLAY=:0 notify-send -u normal -t 2000 -i dialog-information \"Device connected: ${QREXEC_REMOTE_DOMAIN}:$DEVICE $LINEBREAK$FS $SIZE\"" >/dev/null 2>&1
+        ;;
+    x"R")
+        #[ x"${SEND_MESSAGE}" = x"True" ] && sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} notify-send -u normal -t 2000 -i dialog-information \"Device disconnected: ${QREXEC_REMOTE_DOMAIN}:$DEVICE\"" >/dev/null 2>&1
+        [ x"${SEND_MESSAGE}" = x"True" ] && sudo -u user /bin/sh -c "DISPLAY=:0 notify-send -u normal -t 2000 -i dialog-information \"Device disconnected: ${QREXEC_REMOTE_DOMAIN}:$DEVICE\"" >/dev/null 2>&1
+        ;;
+esac
+
+#sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} dbus-send --dest=org.awesomewm.awful --type=method_call --print-reply / org.awesomewm.awful.Remote.Eval string:\"storage_state('${ACTION}', '${QREXEC_REMOTE_DOMAIN}', '${DEVICE}', '${FS}', '${SIZE}')\"" 1>/dev/null 2>&1
+sudo -u user /bin/sh -c "DISPLAY=:0 dbus-send --dest=org.awesomewm.awful --type=method_call --print-reply / org.awesomewm.awful.Remote.Eval string:\"storage_state('${ACTION}', '${QREXEC_REMOTE_DOMAIN}', '${DEVICE}', '${FS}', '${SIZE}')\"" 1>/dev/null 2>&1
+
+exit 0

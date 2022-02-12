@@ -2,7 +2,7 @@
 
 
 # Set to "True" if you will be connecting input devices to usb vm
-USB_INPUT_DEVICES="False"
+USB_INPUT_DEVICES="True"
 
 # Set to "True" to not require PCI device reset
 USB_NO_STRICT_RESET="True"
@@ -46,6 +46,8 @@ message "CONFIGURING ${YELLOW}${VM_USB}"
 qvm-prefs --quiet --set "${VM_USB}" maxmem 0
 qvm-prefs --quiet --set "${VM_USB}" memory 176
 qvm-prefs --quiet --set "${VM_USB}" netvm ''
+#qvm-prefs --quiet --set "${VM_USB}" guivm ''
+qvm-prefs --quiet --set "${VM_USB}" audiovm ''
 qvm-prefs --quiet --set "${VM_USB}" vcpus 1
 qvm-prefs --quiet --set "${VM_USB}" virt_mode hvm
 
@@ -65,10 +67,12 @@ done
 
 
 message "CONFIGURING ${YELLOW}dom0"
+push_files "dom0"
 sudo qubes-dom0-update --console --show-output qubes-usb-proxy-dom0
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.Message" "${VM_USB} dom0 allow"
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.Error" "${VM_USB} dom0 allow"
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.SplitXorg" "${VM_USB} ${VM_XORG} allow"
+add_line dom0 "/etc/qubes-rpc/policy/liteqube.SignalStorage" "${VM_USB} dom0 allow"
 
 
 if [ x"${USB_INPUT_DEVICES}" = x"True" ] ; then
@@ -76,7 +80,8 @@ if [ x"${USB_INPUT_DEVICES}" = x"True" ] ; then
     push_command "${VM_CORE}" "apt-get install -q -y qubes-input-proxy-sender"
     message "CONFIGURING USB INPUT IN ${YELLOW}dom0"
     sudo qubes-dom0-update --console --show-output qubes-input-proxy
-    push_files "dom0"
+else
+    sudo rm -f /etc/qubes-rpc/policy/qubes.Input*
 fi
 
 

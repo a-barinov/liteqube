@@ -1,0 +1,55 @@
+#!/bin/sh
+
+if [ $# -ne 2 ]; then
+    exit 1
+fi
+
+DEV_NAME="$2"
+DEV_PATH="/dev/${DEV_NAME}"
+eval $(/sbin/blkid -o udev "${DEV_PATH}")
+
+case "$1" in
+    add)
+        # Decide if we want to proceed with this device
+        if ! ( [ x"${ID_FS_TYPE}" = x"vfat" ] || [ x"${ID_FS_TYPE}" = x"ext4" ] || [ x"${ID_FS_TYPE}" = x"ntfs" ] || [ x"${ID_FS_TYPE}" = x"crypto_LUKS" ] || [ x"${ID_FS_TYPE}" = x"exfat" ] ) ; then
+            # Check that's not a partition (that shall be skipped silently)
+            if ! ( [ x"${ID_PART_TABLE_TYPE}" != x"" ] ) ; then
+                [ x"${ID_FS_TYPE}" = x"" ] && ID_FS_TYPE="Unknown filesystem" || ID_FS_TYPE="Filesystem ${ID_FS_TYPE}"
+                /usr/bin/qrexec-client-vm dom0 liteqube.Error+"${ID_FS_TYPE} on ${DEV_NAME} not supported" 1>/dev/null 2>&1
+            fi
+            exit 1
+        fi
+
+        # Human-readable device size
+        SIZE="$(blockdev --getsize64 "/dev/${DEV_NAME}")"
+        if [ $SIZE -lt 1024 ] ; then
+            SIZE="$SIZE"'b'
+        else
+            SIZE=$((SIZE/1024))
+            if [ $SIZE -lt 1024 ] ; then
+                SIZE="$SIZE"'k'
+            else
+                SIZE=$((SIZE/1024))
+                if [ $SIZE -lt 1024 ] ; then
+                    SIZE="$SIZE"'M'
+                else
+                    SIZE=$((SIZE/1024))
+                    SIZE="$SIZE"'G'
+                fi
+            fi
+        fi
+
+        if [ x"${ID_FS_TYPE}" = x"crypto_LUKS" ] ; then
+            ID_FS_TYPE="LUKS"
+        fi
+
+        /usr/bin/qrexec-client-vm dom0 liteqube.SignalStorage+A_"${DEV_NAME}"_"${ID_FS_TYPE}"_"${SIZE}" 1>/dev/null 2>&1
+        ;;
+    remove)
+        /usr/bin/qrexec-client-vm dom0 liteqube.SignalStorage+R_"${DEV_NAME}" 1>/dev/null 2>&1
+        ;;
+    *)
+        echo "Unknown action"
+        exit 1
+        ;;
+esac

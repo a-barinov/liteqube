@@ -3,8 +3,6 @@
 SYS_USB="sys-usb"
 . ../.lib/lib.sh
 
-set -x
-
 qvm-shutdown --quiet --wait --force "${VM_USB}"
 
 qvm-start --quiet --skip-if-running "${SYS_USB}"
