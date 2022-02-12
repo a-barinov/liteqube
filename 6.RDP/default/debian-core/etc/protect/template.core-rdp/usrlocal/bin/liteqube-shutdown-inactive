@@ -1,0 +1,17 @@
+#!/bin/sh
+
+export DISPLAY=":0"
+
+for TIMEOUT in 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 3 0 ; do
+    [ x"${TIMEOUT}" = x"0" ] && systemctl poweroff
+    sleep "${TIMEOUT}"
+    sudo -u user xwininfo -root -children | grep " 2 children" >/dev/null && break
+done
+
+while true ; do
+    sleep 10
+    sudo -u user xwininfo -root -children | grep " 1 child" >/dev/null && break
+done
+systemctl poweroff
+
+exit 0

@@ -1,0 +1,20 @@
+#!/bin/sh
+
+if [ $# -lt 2 ] ; then
+    echo "Usage: $(basename "${0}") <connection-type> [ssh-connection] <remote-connection>"
+    echo "       connection-type is one of: vnc, vnc-ssh, rdp, rdp-ssh"
+    echo "       ssh-connection is required for vnc-ssh and rdp-ssh only format is: user@server[:port]"
+    echo "       remote-connection format is: [[domain:]user@]server[:port]"
+    exit 1
+fi
+
+REMOTE_TYPE="${1}"
+
+if [ x"${REMOTE_TYPE: -3}" = x"ssh" ] ; then
+    REMOTE_SSH="${2}"
+    shift
+fi
+
+REMOTE_CONNECTION="${2}"
+
+echo -e "${REMOTE_SSH}\n${REMOTE_CONNECTION}" | qvm-run --quiet --autostart --gui --pass-io --no-color-output --service core-rdp "liteqube.RDP+${REMOTE_TYPE:0:3}"
