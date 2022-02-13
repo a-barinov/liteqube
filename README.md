@@ -53,7 +53,7 @@ Here is how this level of efficiency is achieved:
  - Existing Qubes install (both dom0 and user qubes) remains untouched. Liteqube will install a few packages to dom0 (if not installed already): qubes-template-debian-11-minimal, parted and gdisk, zenity and dialog, . The first three can be removed after the installation completes. Some rpc scripts and policies will be installed into `/etc/qubes-rpc`, all named `liteqube.xxx` so auditing them is easy. Some optional but helpful scripts will be put into `~/bin` folder with `lq-xxx` naming pattern.
 
 ### How to install:
- 1. Download liteqube-0.91.tar.gz from here: [liteqube-0.91.tar.gz](https://github.com/a-barinov/liteqube/files/7779554/liteqube-0.91.tar.gz).
+ 1. Download liteqube-0.91.tar.gz [here:](https://github.com/a-barinov/liteqube/releases/tag/0.91).
  2. Transfer it to dom0 and unpack to a folder of your choice.
  3. Go to '1.Base' folder, review, edit / change settings as needed and run `install.sh` script there.
  4. Once base system is installed, proceed with installation of the components you need from other folders.
