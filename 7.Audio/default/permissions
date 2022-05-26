@@ -11,6 +11,5 @@ drwxr-xr-x	root	root	./debian-core/etc/protect/template.core-sound/config
 -rw-r--r--	root	root	./dom0/etc/qubes-rpc/policy/liteqube.SignalSound
 -rw-r--r--	root	root	./dom0/etc/qubes-rpc/policy/admin.Events
 -rw-r--r--	root	root	./dom0/etc/qubes-rpc/policy/admin.vm.List
--rw-r--r--	root	root	./dom0/etc/qubes-rpc/policy/admin.vm.feature.CheckWithTemplate
 -rw-r--r--	root	root	./dom0/etc/qubes-rpc/policy/admin.vm.property.Get
 -rw-r--r--	root	root	./dom0/etc/qubes-rpc/policy/admin.vm.property.GetAll
