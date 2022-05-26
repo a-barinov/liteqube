@@ -81,7 +81,10 @@ find_file(){
 quarantine(){
     __QRN_FILE__="${1}"
     __QRN_TARGET__="${QUARANTINE_DIR}/$(basename "${__QRN_FILE__}")"
-    check "$QUARANTINE" || return 1
+    if ! check "$QUARANTINE" ; then
+        find "${__QRN_FILE__}" | xargs chattr -d -f -i
+        rm -rf "${__QRN_FILE__}" && return 0 || return 1
+    fi
     if [ ! -d "${QUARANTINE_DIR}" ] ; then
         if ! mkdir -p "${QUARANTINE_DIR}" ; then
             error "ERROR: Failed to quarantine ${__QRN_FILE__}"
@@ -109,9 +112,9 @@ deploy(){
     __DPL_SOURCE__="${1}"
     __DPL_TARGET__="${2}"
     if [ -e "${__DPL_TARGET__}" ] ; then
+        find "${__DPL_TARGET__}" | xargs chattr -d -f -i
         if ! quarantine "${__DPL_TARGET__}" ; then
-            find "${__DPL_TARGET__}" | xargs chattr -d -f -i
-            if ! mv "${__DPL_TARGET__}" "${__DPL_TARGET__}.${date +%s%N}" ; then
+            if ! mv "${__DPL_TARGET__}" "${__DPL_TARGET__}.$(date +%s%N)" ; then
                 error "ERROR: Failed to deploy ${__DPL_TARGET__}"
                 return
             fi
