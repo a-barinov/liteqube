@@ -1,3 +1,3 @@
 #!/bin/sh
 
-nohup qvm-run --quiet --autostart --no-gui --user root --no-shell core-sound /etc/qubes-rpc/liteqube.Xterm pulsemixer >/dev/null 2>&1 &
+nohup qvm-run --quiet --autostart --no-gui --user root --no-shell core-sound /etc/qubes-rpc/liteqube.Xterm "sudo -u user pulsemixer" >/dev/null 2>&1 &
