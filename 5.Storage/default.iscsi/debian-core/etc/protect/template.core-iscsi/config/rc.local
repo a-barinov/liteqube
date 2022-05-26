@@ -1,11 +1,13 @@
 #!/bin/sh
 
+RETURN="
+"
 NS1="10.139.1.1"
 NS2="10.139.1.2"
 if [ -e /var/run/qubes/qubes-ns ] ; then
     . /var/run/qubes/qubes-ns
 fi
-echo -e "nameserver ${NS1}\nnameserver ${NS2}" > /run/resolv.conf
+echo "nameserver ${NS1}${RETURN}nameserver ${NS2}" > /run/resolv.conf
 
 while ! ps -A | grep qrexec-agent >/dev/null 2>&1 ; do
     sleep 1
@@ -24,3 +26,11 @@ fi
 
 /bin/systemctl enable open-iscsi
 /bin/systemctl start open-iscsi
+
+while ! ls /sys/class/net | grep eth >/dev/null 2>&1 ; do
+    sleep 3
+done
+
+INTERFACE="$(ls -1 /sys/class/net | grep "^e" | head -n 1)"
+/sbin/ethtool -K "${INTERFACE}" sg off
+#/sbin/ethtool -K "${INTERFACE}" tx off
