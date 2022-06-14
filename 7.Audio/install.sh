@@ -2,7 +2,7 @@
 
 
 # Space-separated list of qubes having access to aoudio playback
-QUBES_WITH_SOUND="core-rdp dvm-chromium my-skype my-games"
+QUBES_WITH_SOUND="core-rdp dvm-chrome dvm-chrome-tor my-skype my-games"
 
 # Set to "True" to not require PCI device reset
 AUDIO_NO_STRICT_RESET="True"
@@ -33,16 +33,14 @@ message "CONFIGURING ${YELLOW}dom0"
 push_files "dom0"
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.Message" "${VM_AUDIO} dom0 allow"
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.Error" "${VM_AUDIO} dom0 allow"
-add_line dom0 "/etc/qubes-rpc/policy/liteqube.SplitXorg" "${VM_AUDIO} ${VM_XORG} allow"
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.SignalSound" "${VM_AUDIO} dom0 allow"
+add_line dom0 "/etc/qubes-rpc/policy/liteqube.SplitXorg" "${VM_AUDIO} ${VM_XORG} allow"
 add_line dom0 "/etc/qubes-rpc/policy/admin.Events" "${VM_AUDIO} "'$adminvm allow,target=$adminvm'
 add_line dom0 "/etc/qubes-rpc/policy/admin.vm.List" "${VM_AUDIO} "'$adminvm allow,target=$adminvm'
-add_line dom0 "/etc/qubes-rpc/policy/admin.vm.property.Get" "${VM_AUDIO} "'$adminvm allow,target=$adminvm'
 add_line dom0 "/etc/qubes-rpc/policy/admin.vm.property.GetAll" "${VM_AUDIO} "'$adminvm allow,target=$adminvm'
 for VM in ${QUBES_WITH_SOUND} ; do
     add_line dom0 "/etc/qubes-rpc/policy/admin.Events" "${VM_AUDIO} ${VM} "'allow,target=$adminvm'
     add_line dom0 "/etc/qubes-rpc/policy/admin.vm.List" "${VM_AUDIO} ${VM} "'allow,target=$adminvm'
-    add_line dom0 "/etc/qubes-rpc/policy/admin.vm.property.Get" "${VM_AUDIO} ${VM} "'allow,target=$adminvm'
     add_line dom0 "/etc/qubes-rpc/policy/admin.vm.property.GetAll" "${VM_AUDIO} ${VM} "'allow,target=$adminvm'
     vm_exists "${VM}" && qvm-prefs "${VM}" audiovm "${VM_AUDIO}"
 done
@@ -67,7 +65,8 @@ message "TERMINATING ${YELLOW}${VM_CORE}"
 qvm-shutdown --quiet --wait --force "${VM_CORE}"
 
 
-#TODO create pulseaudio monitor to monitor volume changes and new channels appearing
+#TODO option to autostart qube
+#TODO delayed start to minimise cpu impact
 
 
 message "DONE!"

@@ -1,0 +1,12 @@
+[Unit]
+Description=Monitor and report to dom0 volume changes on default sink
+
+[Service]
+Type=simple
+User=user
+Group=user
+StandardOutput=journal
+StandardError=journal
+ExecStart=/rw/config/liteqube-pulseaudio-monitor
+Restart=always
+RestartSec=10

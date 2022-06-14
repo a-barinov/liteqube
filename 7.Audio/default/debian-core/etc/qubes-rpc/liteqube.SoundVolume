@@ -5,8 +5,11 @@
 #   'UNMUTE' to unmute
 #   'UP' to increase volume by 5%, rounded down to %5 and not above 100%
 #   'DOWN' to decrease volume by 5%, rounded down to %5 and not below 5%
+#   'NOOP' to just report current volume
 #   NUM in the range of 5-100 to set volume to NUM%;
-# after successful operation print [M|U]VOLUME
+
+unset DBUS_SESSION_BUS_ADDRESS
+unset XDG_RUNTIME_DIR
 
 SINK="$(pacmd stat | grep 'Default sink name' | cut -d' ' -f 4)"
 VOLUME="$(pacmd list-sinks | awk '/^\s+name: /{indefault = $2 =="<'"${SINK}"'>"}/^\s+volume: / && indefault {print $5; exit}' | cut -d'%' -f1)"
@@ -30,6 +33,12 @@ case "${1}" in
         [ "${NEW_VOLUME}" -lt 5 ] && NEW_VOLUME=5
         pacmd set-sink-volume "${SINK}" "$(( NEW_VOLUME * 65536 / 100 ))"
         ;;
+    NOOP)
+        VOLUME="$(pacmd list-sinks | awk '/^\s+name: /{indefault = $2 =="<'"${SINK}"'>"}/^\s+volume: / && indefault {print $5; exit}' | cut -d'%' -f1)"
+        MUTE="$(pacmd list-sinks | awk '/^\s+name: /{indefault = $2 =="<'"${SINK}"'>"}/^\s+muted: / && indefault {print $2; exit}')"
+        [ x"${MUTE}" = x"yes" ] && REPORT="M${VOLUME}" || REPORT="U${VOLUME}"
+        qrexec-client-vm dom0 "liteqube.SignalSound+${REPORT}"
+        ;;
     *)
         if [ $(expr "${1}" : '1\?[0-9]\?[0-9]') = $(expr length "$1") ] ; then
             NEW_VOLUME="${1}"
@@ -42,9 +51,5 @@ case "${1}" in
         fi
         ;;
 esac
-
-VOLUME="$(pacmd list-sinks | awk '/^\s+name: /{indefault = $2 =="<'"${SINK}"'>"}/^\s+volume: / && indefault {print $5; exit}' | cut -d'%' -f1)"
-MUTE="$(pacmd list-sinks | awk '/^\s+name: /{indefault = $2 =="<'"${SINK}"'>"}/^\s+muted: / && indefault {print $2; exit}')"
-[ x"${MUTE}" = x"yes" ] && echo "M${VOLUME}" || echo "U${VOLUME}"
 
 exit 0

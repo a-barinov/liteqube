@@ -1,3 +1,8 @@
-#!/bin/sh
+#!/bin/bash
+
+LINE=$(cat /home/user/.dbus/session-bus/* | grep DBUS_SESSION_BUS_ADDRESS= | tail -n 1)
+BUS=${LINE:25}
+
+sudo -u user /bin/sh -c "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=${BUS} dbus-send --dest=org.awesomewm.awful --type=method_call --print-reply / org.awesomewm.awful.Remote.Eval string:\"sound_state('${1}')\"" 1>/dev/null 2>&1
 
 exit 0
