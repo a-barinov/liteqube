@@ -395,7 +395,7 @@ fi
 message "CONFIGURING ${YELLOW}${VM_TOR}"
 qvm-prefs --quiet --set "${VM_TOR}" maxmem 0
 qvm-prefs --quiet --set "${VM_TOR}" memory 512
-qvm-prefs --quiet --set "${VM_TOR}" netvm "${VM_FW_NET}" || true
+qvm-prefs --quiet --set "${VM_TOR}" netvm "${VM_FW_NET}"
 #qvm-prefs --quiet --set "${VM_TOR}" guivm ''
 qvm-prefs --quiet --set "${VM_TOR}" audiovm ''
 qvm-prefs --quiet --set "${VM_TOR}" vcpus 1
