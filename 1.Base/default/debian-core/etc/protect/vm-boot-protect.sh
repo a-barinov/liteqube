@@ -81,10 +81,7 @@ find_file(){
 quarantine(){
     __QRN_FILE__="${1}"
     __QRN_TARGET__="${QUARANTINE_DIR}/$(basename "${__QRN_FILE__}")"
-    if ! check "$QUARANTINE" ; then
-        find "${__QRN_FILE__}" | xargs chattr -d -f -i
-        rm -rf "${__QRN_FILE__}" && return 0 || return 1
-    fi
+    check "$QUARANTINE" || return 1
     if [ ! -d "${QUARANTINE_DIR}" ] ; then
         if ! mkdir -p "${QUARANTINE_DIR}" ; then
             error "ERROR: Failed to quarantine ${__QRN_FILE__}"
