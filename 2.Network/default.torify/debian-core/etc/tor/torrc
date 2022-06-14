@@ -10,8 +10,8 @@ Log notice syslog
 VirtualAddrNetwork 10.192.0.0/10
 AutomapHostsOnResolve 1
 
-SocksPort 10.137.0.1:9050
-TransPort 10.137.0.1:9040 IsolateClientAddr IsolateDestPort
+SocksPort 512.512.512.512:9050
+TransPort 512.512.512.512:9040 IsolateClientAddr IsolateDestPort
 TransPort 127.0.0.1:9040 IsolateClientAddr IsolateDestPort
-DnsPort 10.137.0.1:5300
+DnsPort 512.512.512.512:5300
 DnsPort 127.0.0.1:5300

@@ -471,7 +471,7 @@ qvm-start --quiet --skip-if-running "${VM_CORE}"
 sleep 3
 push_from_dir "./default.torify" "${VM_CORE}"
 IP="$(qvm-prefs ${VM_TOR} | grep '^ip ' | cut -c26-)"
-replace_text "${VM_CORE}" "/etc/tor/torrc" "10.137.0.1" "${IP}"
+replace_text "${VM_CORE}" "/etc/tor/torrc" "512.512.512.512" "${IP}"
 qvm-shutdown --quiet --wait --force "${VM_CORE}"
 qvm-shutdown --quiet --wait --force "${VM_UPDATE}"
 qvm-shutdown --quiet --wait --force "${VM_FW_TOR}"
