@@ -2,7 +2,7 @@
 
 
 # Set to "True" to use mirage-firewall for firewall vms
-USE_MIRAGE="True"
+USE_MIRAGE="False"
 
 # Set to "True" to use DispVM for NetVm
 NETVM_DISPOSABLE="True"
@@ -72,7 +72,7 @@ if [ x"${USE_MIRAGE}" = x"True" ] ; then  # Mirage firewall
     qvm-prefs --quiet --set "${VM_FW_BASE}" label "${COLOR_TEMPLATE}"
     qvm-prefs --quiet --set "${VM_FW_BASE}" kernel mirage-firewall
     qvm-prefs --quiet --set "${VM_FW_BASE}" maxmem 0
-    qvm-prefs --quiet --set "${VM_FW_BASE}" memory 64
+    qvm-prefs --quiet --set "${VM_FW_BASE}" memory 32
     qvm-prefs --quiet --set "${VM_FW_BASE}" vcpus 1
     qvm-prefs --quiet --set "${VM_FW_BASE}" virt_mode pvh
     VM_LVM="${VM_FW_BASE//-/--}"
@@ -87,10 +87,11 @@ if [ x"${USE_MIRAGE}" = x"True" ] ; then  # Mirage firewall
         message "VM ${YELLOW}${VM_FW_DVM}${PREFIX} ALREADY EXISTS"
     fi
 
+
     message "CONFIGURING ${YELLOW}${VM_FW_DVM}"
     qvm-prefs --quiet --set "${VM_FW_DVM}" label "${COLOR_WORKERS}"
     qvm-prefs --quiet --set "${VM_FW_DVM}" maxmem 0
-    qvm-prefs --quiet --set "${VM_FW_DVM}" memory 64
+    qvm-prefs --quiet --set "${VM_FW_DVM}" memory 32
     qvm-prefs --quiet --set "${VM_FW_DVM}" vcpus 1
     qvm-prefs --quiet --set "${VM_FW_DVM}" template_for_dispvms True
     qvm-prefs --quiet --set "${VM_FW_DVM}" virt_mode pvh
@@ -105,13 +106,18 @@ if [ x"${USE_MIRAGE}" = x"True" ] ; then  # Mirage firewall
         message "VM ${YELLOW}${VM_FW_NET}${PREFIX} ALREADY EXISTS"
     fi
 
+
     message "CONFIGURING ${YELLOW}${VM_FW_NET}"
     qvm-prefs --quiet --set "${VM_FW_NET}" label "${COLOR_WORKERS}"
     qvm-prefs --quiet --set "${VM_FW_NET}" maxmem 0
-    qvm-prefs --quiet --set "${VM_FW_NET}" memory 64
+    qvm-prefs --quiet --set "${VM_FW_NET}" memory 32
     qvm-prefs --quiet --set "${VM_FW_NET}" vcpus 1
     qvm-prefs --quiet --set "${VM_FW_NET}" provides_network True
-    qvm-prefs --quiet --set "${VM_FW_NET}" virt_mode pvh
+    if cat /var/lib/qubes/vm-kernels/mirage-firewall/vmlinuz | grep Solo5 >/dev/null 2>&1 ; then
+        qvm-prefs --quiet --set "${VM_FW_NET}" virt_mode pvh
+    else
+        qvm-prefs --quiet --set "${VM_FW_NET}" virt_mode pv
+    fi
 
 
     if ! vm_exists "${VM_FW_TOR}" ; then
@@ -121,13 +127,18 @@ if [ x"${USE_MIRAGE}" = x"True" ] ; then  # Mirage firewall
         message "VM ${YELLOW}${VM_FW_TOR}${PREFIX} ALREADY EXISTS"
     fi
 
+
     message "CONFIGURING ${YELLOW}${VM_FW_TOR}"
     qvm-prefs --quiet --set "${VM_FW_TOR}" label "${COLOR_WORKERS}"
     qvm-prefs --quiet --set "${VM_FW_TOR}" maxmem 0
-    qvm-prefs --quiet --set "${VM_FW_TOR}" memory 64
+    qvm-prefs --quiet --set "${VM_FW_TOR}" memory 32
     qvm-prefs --quiet --set "${VM_FW_TOR}" vcpus 1
     qvm-prefs --quiet --set "${VM_FW_TOR}" provides_network True
-    qvm-prefs --quiet --set "${VM_FW_TOR}" virt_mode pvh
+    if cat /var/lib/qubes/vm-kernels/mirage-firewall/vmlinuz | grep Solo5 >/dev/null 2>&1 ; then
+        qvm-prefs --quiet --set "${VM_FW_TOR}" virt_mode pvh
+    else
+        qvm-prefs --quiet --set "${VM_FW_TOR}" virt_mode pv
+    fi
 
 else  # Plain linux firewall
 
