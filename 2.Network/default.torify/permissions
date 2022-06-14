@@ -21,6 +21,4 @@ drwxr-xr-x	root	root	./debian-core/etc/protect/whitelist.core-tor/config/tor
 drwxrwxr-x	root	root	./debian-core/etc/protect/whitelist.core-tor/config/tor/var-lib
 -rw-r--r--	root	root	./debian-core/etc/protect/whitelist.core-tor/config/tor/var-lib/.any_dir
 -rw-r--r--	root	root	./debian-core/etc/tor/torrc
--rwxr-xr-x	root	root	./debian-core/usr/bin/qubes-set-monitor-layout
 -rw-r--r--	root	root	./dom0/etc/yum.repos.d/qubes-dom0.repo
--rw-r--r--	root	root	./dom0/etc/yum.repos.d/qubes-templates.repo
