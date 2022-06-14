@@ -3,7 +3,7 @@
 if [ $# -lt 2 ] ; then
     echo "Usage: $(basename "${0}") <connection-type> [ssh-connection] <remote-connection>"
     echo "       connection-type is one of: vnc, vnc-ssh, rdp, rdp-ssh"
-    echo "       ssh-connection is required for vnc-ssh and rdp-ssh only, format is: user@server[:port]"
+    echo "       ssh-connection is required for vnc-ssh and rdp-ssh only format is: user@server[:port]"
     echo "       remote-connection format is: [[domain:]user@]server[:port]"
     exit 1
 fi
