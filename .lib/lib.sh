@@ -110,7 +110,6 @@ vm_fail_if_missing()
 
 push_command()
 {
-    qvm-start --quiet --skip-if-running "${1}"
     qrexec-client -d "${1}" root:"${2}"
 }
 
