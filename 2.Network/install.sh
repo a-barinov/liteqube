@@ -508,7 +508,7 @@ qvm-shutdown --quiet --wait --force "${VM_NET}"
 qvm-prefs --quiet --set "${VM_FW_NET}" memory 128
 qvm-prefs --quiet --set "${VM_FW_TOR}" memory 128
 qvm-prefs --quiet --set "${VM_NET}" memory 192
-qvm-prefs --quiet --set "${VM_TOR}" memory 144
+qvm-prefs --quiet --set "${VM_TOR}" memory 160
 qvm-start --quiet --skip-if-running "${VM_NET}"
 
 
