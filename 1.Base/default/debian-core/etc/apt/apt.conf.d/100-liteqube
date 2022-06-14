@@ -1,3 +1,4 @@
+Acquire::Retries "5";
 Acquire::BlockDotOnion "false";
 Acquire::http::AllowRedirect "false";
 Dir::Log "/var/tmp";
@@ -8,5 +9,6 @@ APT::Install-Recommends "false";
 APT::AutoRemove "";
 APT::AutoRemove::RecommendsImportant "false";
 APT::AutoRemove::SuggestsImportant "false";
+APT::Acquire::Retries "5";
 DPkg::Post-Invoke {"/root/post-install.sh";};
 
