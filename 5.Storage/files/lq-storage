@@ -137,7 +137,7 @@ while true ; do
                 qvm-shutdown --quiet --wait --timeout 30 --force "${ISCSI}" >/dev/null 2>&1
                 echo "90"
                 if ! [ -z "${USB_DEVICES}" ] ; then
-                    qvm-shutdown --quiet --wait --timeout 30 --force "${USB}" >/dev/null 2>&1
+                    qvm-shutdown --quiet --wait --timout 30 --force "${USB}" >/dev/null 2>&1
                     sleep 3
                     qvm-start --quiet --skip-if-running "${USB}" >/dev/null 2>&1
                 fi
