@@ -98,7 +98,7 @@ if [ x"${ISCSI_VM}" = x"True" ] ; then
 
 
     message "CONFIGURING ${YELLOW}${VM_CORE}"
-    push_command "${VM_CORE}" "apt-get -q -y install open-iscsi"
+    push_command "${VM_CORE}" "apt-get -q -y install open-iscsi ethtool"
     add_line "${VM_CORE}" "/etc/hosts" "127.0.1.1       ${VM_ISCSI}"
     push_from_dir "./default.iscsi" "${VM_CORE}"
     for SERVICE in open-iscsi iscsid ; do
