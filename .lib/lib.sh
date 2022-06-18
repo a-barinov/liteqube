@@ -47,6 +47,8 @@ PREFIX="$(tput setaf 7)$(tput bold)"
 YELLOW="$(tput setaf 3)$(tput bold)"
 POSTFIX="$(tput sgr0)"
 TAB="$(echo -e '\t')"
+ENTER="
+"
 
 message()
 {
@@ -222,12 +224,21 @@ replace_text()
     fi
 }
 
+# TODO: deprecate
 dom0_command()
 {
     _FILE="${1}"
 
     [ -d ~/bin ] || mkdir ~/bin
     cp "./files/${_FILE}" ~/bin
+}
+
+dom0_install_command()
+{
+    _DIC_FILE="${1}"
+
+    [ -d ~/bin ] || mkdir ~/bin
+    cp "./files/${_DIC_FILE}" ~/bin
 }
 
 file_to_vm()
@@ -266,7 +277,7 @@ install_packages()
     _VM="${1}"
 
     shift
-    if [ x"${_VM}" = x"dom0" ] ; then 
+    if [ x"${_VM}" = x"dom0" ] ; then
         echo "NOT IMPLEMENTED"
     else
         qvm-start --quiet --skip-if-running "${_VM}"
@@ -275,4 +286,45 @@ install_packages()
         done
         [ -z "${_PACKAGES_TO_INSTALL}" ] || qrexec-client -d "${_VM}" root:"aptitude -q -y install ${_PACKAGES_TO_INSTALL}"
     fi
+}
+
+add_permission()
+{
+    _ADP_PERMISSION_NAME="${1}"
+    _ADP_VM_FROM="${2}"
+    _ADP_VM_TO="${3}"
+    _ADP_PERMISSION="${4}"
+    add_line dom0 "/etc/qubes-rpc/policy/liteqube.${_ADP_PERMISSION_NAME}" "${_ADP_VM_FROM} ${_ADP_VM_TO} ${_ADP_PERMISSION}"
+}
+
+vm_find_template()
+{
+    _FIT_VM="${1}"
+    while qvm-prefs --get "${_FIT_VM}" template 1>/dev/null 2>&1 ; do
+        _FIT_VM="$(qvm-prefs --get "${_FIT_VM}" template)"
+    done
+    echo "${_FIT_VM}"
+    # cat /etc/*release | grep Debian
+}
+
+vm_type()
+{
+    _VMT_VM="${1}"
+    case "${_VMT_VM}" in
+        *[Dd]ebian*)
+            echo "debian" ;;
+        *[Ff]edora*)
+            echo "fedora" ;;
+        *)
+            qvm-start --quiet --skip-if-running "${_VMT_VM}"
+            case "$(qrexec-client -d "${_VMT_VM}" root:"cat /etc/*release")" in
+                *[Dd]ebian*)
+                    echo "debian" ;;
+                *[Ff]edora*)
+                    echo "fedora" ;;
+                *)
+                    echo "unknown" ;;
+            esac
+            ;;
+    esac
 }
