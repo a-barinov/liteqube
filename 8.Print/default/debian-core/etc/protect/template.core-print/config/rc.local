@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# Set PREVIEW to "yes" to enable pdf preview before printing
+# '' package needs to be insalled for previews to work
+PREVIEW="yes"
+
+RETURN="
+"
+NS1="10.139.1.1"
+NS2="10.139.1.2"
+if [ -e /var/run/qubes/qubes-ns ] ; then
+    . /var/run/qubes/qubes-ns
+fi
+echo "nameserver ${NS1}${RETURN}nameserver ${NS2}" > /run/resolv.conf
+
+[ x"${PREVIEW}" = x"yes" ] && /bin/systemctl start qubes-gui-agent
+
+/bin/systemctl enable qubes-iptables
+/bin/systemctl start qubes-iptables
+
+/bin/systemctl enable qubes-network
+/bin/systemctl start qubes-network
+
+touch /var/run/qubes-service/cups
+/bin/systemctl enable cups
+/bin/systemctl start cups
+
+/bin/systemctl enable liteqube-print-monitor
+/bin/systemctl start liteqube-print-monitor

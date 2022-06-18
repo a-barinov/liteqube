@@ -1,0 +1,33 @@
+#!/bin/sh
+
+export QT_SCALE_FACTOR=2
+export GDK_SCALE=2
+export DISPLAY=":0"
+
+while true ; do
+    find /home/user/QubesIncoming/ -type f | while read FILENAME ; do
+        case "${FILENAME}" in
+            *.[Pp][Dd][Ff])
+                qrexec-client-vm dom0 "liteqube.Message+Printing $(basename $FILENAME)"
+                if grep 'PREVIEW="yes"' < /rw/config/rc.local >/dev/null 2>&1 ; then
+                    zathura "${FILENAME}"
+                else
+                    lp -s "${FILENAME}"
+                fi
+                sleep
+                while ! [ -z "$(lpstat -o)" ] ; do
+                    sleep 3
+                done
+                qrexec-client-vm dom0 "liteqube.Message+Done with $(basename $FILENAME)"
+                ;;
+            *)
+                qrexec-client-vm dom0 "liteqube.Error+Skipping $(basename $FILENAME)"
+                ;;
+        esac
+        COUNT=0
+        rm "$FILENAME" >/dev/null 2>&1
+    done
+    COUNT=$((COUNT + 1))
+    [ x"${COUNT}" = x"100" ] && sudo /bin/systemctl poweroff
+    sleep 3
+done

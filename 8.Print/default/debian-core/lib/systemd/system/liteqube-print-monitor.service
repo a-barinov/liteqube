@@ -1,0 +1,16 @@
+[Unit]
+Description=Monitor new pdfs sent to vm and print it
+ConditionPathExists=/usr/local/bin/liteqube-print-monitor
+
+[Service]
+Type=simple
+User=user
+Group=user
+StandardOutput=journal
+StandardError=journal
+ExecStart=/bin/sh /usr/local/bin/liteqube-print-monitor
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

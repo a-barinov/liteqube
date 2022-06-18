@@ -1,0 +1,3 @@
+#!/bin/sh
+
+nohup qvm-run --quiet --autostart --no-gui --user root --no-shell core-sound /etc/qubes-rpc/liteqube.Xterm "/home/user/lq-printers" >/dev/null 2>&1 &

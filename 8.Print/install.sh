@@ -1,56 +1,89 @@
 #!/bin/bash
 
 
-# Space-separated list of qubes having access to aoudio playback
-QUBES_WITH_SOUND="core-rdp dvm-chrome dvm-chrome-tor my-skype my-games"
+# Space-separated list of qubes having access to printing
+QUBES_ALLOWED_TO_PRINT="dvm-torbrowser dvm-chrome dvm-chrome-tor my-personal"
 
-# Set to "True" to not require PCI device reset
-AUDIO_NO_STRICT_RESET="True"
+# PDF previewer package (and command)
+PDF_PREVIEW="zathura-pdf-poppler"
+
+# Space-separated list of printer drivers packages to install
+PRINTER_DRIVERS=""
 
 
 #########################################################################
 #       Do not edit code below unless you know what you are doing       #
 #########################################################################
-
-
 . ../.lib/lib.sh
 set -e
 
 
 vm_fail_if_missing "${VM_CORE}"
 vm_fail_if_missing "${VM_DVM}"
-vm_create "${VM_AUDIO}" "dispvm"
-vm_configure "${VM_AUDIO}" "hvm" 192 '' ''
+vm_create "${VM_PRINT}" "dispvm"
+vm_configure "${VM_PRINT}" "pvh" 1024 'fw-net' 'dom0'
 
 
 message "CONFIGURING ${YELLOW}${VM_CORE}"
-install_packages "${VM_CORE}" pulseaudio pulsemixer qubes-gui-daemon-pulseaudio
+install_packages "${VM_CORE}" cups qubes-usb-proxy "${PDF_PREVIEW}" ${PRINTER_DRIVERS}
 push_files "${VM_CORE}"
-push_command "${VM_CORE}" "adduser user audio 2>/dev/null 1>&2"
+
+
+message "CONFIGURING ${YELLOW}cups"
+message "PLEASE PUT:"
+message "  - ${YELLOW}printers.conf${PREFIX} into ${YELLOW}files${PREFIX} folder"
+message "  - any ppd files into ${YELLOW}files/ppd${PREFIX} folder"
+message "PRESS ENTER WHEN READY"
+read INPUT
+[ -f "./files/printers.conf" ] && file_to_vm "./files/printers.conf" "${VM_CORE}" "/etc/cups/printers.conf"
+for PPD in ./files/ppd/* ; do
+    [ -f "${PPD}" ] || continue
+    NAME="$(basename "${PPD}")"
+    file_to_vm "${PPD}" "${VM_CORE}" "/etc/cups/ppd/${NAME}"
+done
 
 
 message "CONFIGURING ${YELLOW}dom0"
 push_files "dom0"
-add_line dom0 "/etc/qubes-rpc/policy/liteqube.Message" "${VM_AUDIO} dom0 allow"
-add_line dom0 "/etc/qubes-rpc/policy/liteqube.Error" "${VM_AUDIO} dom0 allow"
-add_line dom0 "/etc/qubes-rpc/policy/liteqube.SignalSound" "${VM_AUDIO} dom0 allow"
-add_line dom0 "/etc/qubes-rpc/policy/liteqube.SplitXorg" "${VM_AUDIO} ${VM_XORG} allow"
-add_line dom0 "/etc/qubes-rpc/policy/admin.Events" "${VM_AUDIO} "'$adminvm allow,target=$adminvm'
-add_line dom0 "/etc/qubes-rpc/policy/admin.vm.List" "${VM_AUDIO} "'$adminvm allow,target=$adminvm'
-add_line dom0 "/etc/qubes-rpc/policy/admin.vm.property.GetAll" "${VM_AUDIO} "'$adminvm allow,target=$adminvm'
-for VM in ${QUBES_WITH_SOUND} ; do
-    add_line dom0 "/etc/qubes-rpc/policy/admin.Events" "${VM_AUDIO} ${VM} "'allow,target=$adminvm'
-    add_line dom0 "/etc/qubes-rpc/policy/admin.vm.List" "${VM_AUDIO} ${VM} "'allow,target=$adminvm'
-    add_line dom0 "/etc/qubes-rpc/policy/admin.vm.property.GetAll" "${VM_AUDIO} ${VM} "'allow,target=$adminvm'
-    vm_exists "${VM}" && qvm-prefs "${VM}" audiovm "${VM_AUDIO}"
+add_permission "Message" "${VM_PRINT}" "dom0" "allow"
+add_permission "Error" "${VM_PRINT}" "dom0" "allow"
+add_permission "SplitXorg" "${VM_PRINT}" "dom0" "allow"
+for VM in ${QQUBES_ALLOWED_TO_PRINT} ; do
+    add_permission "PrintFile" "${VM}" "${VM_PRINT}" "ask,default_target=${VM_PRINT}"
 done
-dom0_command lq-volume
+dom0_install_command lq-printers
+#TODO: create script for easy usb device sharing
+#dom0_install_command lq-usb
 
 
-message "ATTACHING AUDIO DEVICES TO ${YELLOW}${VM_AUDIO}"
-for DEVICE in $(qvm-pci | grep -ie Audio -ie Sound | cut -d' ' -f1); do
-    [ x"${AUDIO_NO_STRICT_RESET}" = x"True" ] && OPTIONS="--option no-strict-reset=true"
-    qvm-pci attach "${VM_AUDIO}" "${DEVICE}" --persistent ${OPTIONS} || true
+message "INSTALLING ${YELLOW}cups-pdf${PREFIX} TO TEMPLATES"
+TEMPLATES_MODIFIED=""
+for VM in ${QQUBES_ALLOWED_TO_PRINT} ; do
+    TEMPLATE="$(vm_find_template "${VM}")"
+    if ! echo "${TEMPLATES_MODIFIED}" | grep "^${VM}$$" >/dev/null 2>&1 ; then
+        TEMPLATE_TYPE=vm_type "${TEMPLATE}"
+        case "${TEMPLATE_TYPE}" in
+            debian)
+                push_command "${TEMPLATE}" "apt-get install printer-driver-cups-pdf"
+                push_command "${TEMPLATE}" "lpadmin -p Qubes_Printer -v cups-pdf:/ -E -P /usr/share/ppd/cups-pdf/CUPS-PDF_opt.ppd"
+                push_command "${TEMPLATE}" "lpoptions -p Qubes_Printer -o PostProcessing=/usr/bin/liteqube-print"
+                push_command "${TEMPLATE}" "lpadmin -d Qubes_Printer"
+                file_to_vm "${TEMPLATE}" "./files/liteqube-print" "/usr/bin/liteqube-print"
+                ;;
+            fedora)
+                push_command "${TEMPLATE}" "dnf install cups-pdf"
+                push_command "${TEMPLATE}" "lpadmin -p Qubes_Printer -v cups-pdf:/ -E -P /usr/share/ppd/cups-pdf/CUPS-PDF_opt.ppd"
+                push_command "${TEMPLATE}" "lpoptions -p Qubes_Printer -o PostProcessing=/usr/bin/liteqube-print"
+                push_command "${TEMPLATE}" "lpadmin -d Qubes_Printer"
+                file_to_vm "${TEMPLATE}" "./files/liteqube-print" "/usr/bin/liteqube-print"
+                ;;
+            *)
+                message "ERROR: DON'T KNOW HOW TO HANDLE ${YELLOW}${TEMPLATE_TYPE}"
+                ;;
+        esac
+        qvm-shutdown --quiet --wait --force "${TEMPLATE}"
+        TEMPLATES_MODIFIED="${TEMPLATES_MODIFIED}${ENTER}${VM}"
+    fi
 done
 
 
@@ -63,10 +96,6 @@ message "DONE CUSTOMISING"
 
 message "TERMINATING ${YELLOW}${VM_CORE}"
 qvm-shutdown --quiet --wait --force "${VM_CORE}"
-
-
-#TODO option to autostart qube
-#TODO delayed start to minimise cpu impact
 
 
 message "DONE!"

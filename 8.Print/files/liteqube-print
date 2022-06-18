@@ -1,0 +1,10 @@
+#!/bin/sh
+
+if ! [ -e "${1}" ] ; then
+    echo "Wrong arguments"
+    exit 0
+fi
+
+cat "${1}" | qrexec-client-vm -tT core-print "liteqube.PrintFile+$(basename ${1})"
+
+exit 0

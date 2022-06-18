@@ -1,0 +1,49 @@
+#!/bin/sh
+
+TAB="	"
+
+
+while true ; do
+
+    # DEFAULT_PRINTER is set to "destination" if no default printer set
+    DEFAULT_PRINTER="$(lpstat -d | cut -d" " -f4)"
+
+    PRINTERS="$(lpstat -a | while read PRINTER ; do
+        NAME=$(echo "${PRINTER}" | cut -d" " -f1)
+        echo -n "${TAB}${NAME}"
+        if [ x"${NAME}" = x"${DEFAULT_PRINTER}" ] ; then
+            echo -n "${TAB} Default"
+        else
+            echo -n "${TAB} Idle"
+        fi
+    done)"
+
+    IFS="${TAB}"
+    CHOICE=$(whiptail --title "Select printer" --menu "" 20 60 10 ${PRINTERS} 3>&2 2>&1 1>&3)
+    if [ -z "${CHOICE}" ] ; then
+        exit 0
+    fi
+    PRINTER="${CHOICE}"
+
+    CHOICE=$(whiptail --noitem --title "${PRINTER}" --menu "" 20 60 10 "Status" "" "Queue" "" "Set default" "" 3>&2 2>&1 1>&3)
+    if [ -z "${CHOICE}" ] ; then
+        continue
+    fi
+
+    case "${CHOICE}" in
+        "Status")
+            STATE="$(lpstat "${PRINTER}" -t | grep "${PRINTER}")"
+            whiptail --title "${PRINTER}" --msgbox "${STATE}" 20 60
+            ;;
+        "Queue")
+            lpstat -o "${PRINTER}"
+            # Remove: lprm job-id
+            ;;
+        "Set default")
+            lpadmin -d "${PRINTER}"
+            ;;
+    esac
+
+done
+
+exit 0
