@@ -35,13 +35,13 @@ add_line dom0 "/etc/qubes-rpc/policy/liteqube.Message" "${VM_AUDIO} dom0 allow"
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.Error" "${VM_AUDIO} dom0 allow"
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.SignalSound" "${VM_AUDIO} dom0 allow"
 add_line dom0 "/etc/qubes-rpc/policy/liteqube.SplitXorg" "${VM_AUDIO} ${VM_XORG} allow"
-add_line dom0 "/etc/qubes-rpc/policy/admin.Events" "${VM_AUDIO} "'$adminvm allow,target=$adminvm'
-add_line dom0 "/etc/qubes-rpc/policy/admin.vm.List" "${VM_AUDIO} "'$adminvm allow,target=$adminvm'
-add_line dom0 "/etc/qubes-rpc/policy/admin.vm.property.GetAll" "${VM_AUDIO} "'$adminvm allow,target=$adminvm'
+add_line dom0 "/etc/qubes-rpc/policy/admin.Events" "${VM_AUDIO} "'\$adminvm allow,target=\$adminvm'
+add_line dom0 "/etc/qubes-rpc/policy/admin.vm.List" "${VM_AUDIO} "'\$adminvm allow,target=\$adminvm'
+add_line dom0 "/etc/qubes-rpc/policy/admin.vm.property.GetAll" "${VM_AUDIO} "'\$adminvm allow,target=\$adminvm'
 for VM in ${QUBES_WITH_SOUND} ; do
-    add_line dom0 "/etc/qubes-rpc/policy/admin.Events" "${VM_AUDIO} ${VM} "'allow,target=$adminvm'
-    add_line dom0 "/etc/qubes-rpc/policy/admin.vm.List" "${VM_AUDIO} ${VM} "'allow,target=$adminvm'
-    add_line dom0 "/etc/qubes-rpc/policy/admin.vm.property.GetAll" "${VM_AUDIO} ${VM} "'allow,target=$adminvm'
+    add_line dom0 "/etc/qubes-rpc/policy/admin.Events" "${VM_AUDIO} ${VM} "'allow,target=\$adminvm'
+    add_line dom0 "/etc/qubes-rpc/policy/admin.vm.List" "${VM_AUDIO} ${VM} "'allow,target=\$adminvm'
+    add_line dom0 "/etc/qubes-rpc/policy/admin.vm.property.GetAll" "${VM_AUDIO} ${VM} "'allow,target=\$adminvm'
     vm_exists "${VM}" && qvm-prefs "${VM}" audiovm "${VM_AUDIO}"
 done
 dom0_command lq-volume
