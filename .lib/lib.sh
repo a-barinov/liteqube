@@ -69,7 +69,7 @@ vm_exists()
 vm_create()
 {
     _VMC_VM="${1}"
-    _TYPE="${2}"
+    _VMC_TYPE="${2}"
 
     if vm_exists "${_VMC_VM}" ; then
         message "VM ${YELLOW}${_VMC_VM}${PREFIX} ALREADY EXISTS"
@@ -112,6 +112,7 @@ vm_fail_if_missing()
 
 push_command()
 {
+    qvm-start --quiet --skip-if-running "${1}"
     qrexec-client -d "${1}" root:"${2}"
 }
 
@@ -304,7 +305,6 @@ vm_find_template()
         _FIT_VM="$(qvm-prefs --get "${_FIT_VM}" template)"
     done
     echo "${_FIT_VM}"
-    # cat /etc/*release | grep Debian
 }
 
 vm_type()

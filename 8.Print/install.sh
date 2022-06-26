@@ -2,7 +2,7 @@
 
 
 # Space-separated list of qubes having access to printing
-QUBES_ALLOWED_TO_PRINT="dvm-torbrowser dvm-chrome dvm-chrome-tor my-personal"
+QUBES_ALLOWED_TO_PRINT="fedora-34 debian-11-minimal"
 
 # PDF previewer package (and command)
 PDF_PREVIEW="zathura-pdf-poppler"
@@ -58,24 +58,24 @@ dom0_install_command lq-printers
 
 message "INSTALLING ${YELLOW}cups-pdf${PREFIX} TO TEMPLATES"
 TEMPLATES_MODIFIED=""
-for VM in ${QQUBES_ALLOWED_TO_PRINT} ; do
+for VM in ${QUBES_ALLOWED_TO_PRINT} ; do
     TEMPLATE="$(vm_find_template "${VM}")"
     if ! echo "${TEMPLATES_MODIFIED}" | grep "^${VM}$$" >/dev/null 2>&1 ; then
-        TEMPLATE_TYPE=vm_type "${TEMPLATE}"
+        TEMPLATE_TYPE="$(vm_type "${TEMPLATE}")"
         case "${TEMPLATE_TYPE}" in
             debian)
                 push_command "${TEMPLATE}" "apt-get install printer-driver-cups-pdf"
                 push_command "${TEMPLATE}" "lpadmin -p Qubes_Printer -v cups-pdf:/ -E -P /usr/share/ppd/cups-pdf/CUPS-PDF_opt.ppd"
                 push_command "${TEMPLATE}" "lpoptions -p Qubes_Printer -o PostProcessing=/usr/bin/liteqube-print"
                 push_command "${TEMPLATE}" "lpadmin -d Qubes_Printer"
-                file_to_vm "${TEMPLATE}" "./files/liteqube-print" "/usr/bin/liteqube-print"
+                file_to_vm "./files/liteqube-print" "${TEMPLATE}" "/usr/bin/liteqube-print"
                 ;;
             fedora)
                 push_command "${TEMPLATE}" "dnf install cups-pdf"
-                push_command "${TEMPLATE}" "lpadmin -p Qubes_Printer -v cups-pdf:/ -E -P /usr/share/ppd/cups-pdf/CUPS-PDF_opt.ppd"
+                push_command "${TEMPLATE}" "lpadmin -p Qubes_Printer -v cups-pdf:/ -E -P /usr/share/ppd/cupsfilters/Generic-PDF_Printer-PDF.ppd"
                 push_command "${TEMPLATE}" "lpoptions -p Qubes_Printer -o PostProcessing=/usr/bin/liteqube-print"
                 push_command "${TEMPLATE}" "lpadmin -d Qubes_Printer"
-                file_to_vm "${TEMPLATE}" "./files/liteqube-print" "/usr/bin/liteqube-print"
+                file_to_vm "./files/liteqube-print" "${TEMPLATE}" "/usr/bin/liteqube-print"
                 ;;
             *)
                 message "ERROR: DON'T KNOW HOW TO HANDLE ${YELLOW}${TEMPLATE_TYPE}"
