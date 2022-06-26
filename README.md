@@ -53,7 +53,7 @@ Here is how this level of efficiency is achieved:
  - Existing Qubes install (both dom0 and user qubes) remains untouched. Liteqube will install a few packages to dom0 (if not installed already): qubes-template-debian-11-minimal, parted and gdisk, zenity and dialog, . The first three can be removed after the installation completes. Some rpc scripts and policies will be installed into `/etc/qubes-rpc`, all named `liteqube.xxx` so auditing them is easy. Some optional but helpful scripts will be put into `~/bin` folder with `lq-xxx` naming pattern.
 
 ### How to install:
- 1. Download liteqube-0.91.tar.gz [here:](https://github.com/a-barinov/liteqube/releases/tag/0.91).
+ 1. Download liteqube-0.92.tar.gz [here:](https://github.com/a-barinov/liteqube/releases/tag/0.92).
  2. Transfer it to dom0 and unpack to a folder of your choice.
  3. Go to '1.Base' folder, review, edit / change settings as needed and run `install.sh` script there.
  4. Once base system is installed, proceed with installation of the components you need from other folders.
@@ -81,7 +81,7 @@ A few installation notes:
 ### Network
 This script will create two firewalls (fw-net and fw-tor, equivalent of sys-firewall), network qube (core-net, equivalent of sys-net), tor qube (core-tor, equivalent of whonix-gw) and a separate qube to handle system updates (core-update).
 
-Two firewall options are offered, linux-based firewall and mirage-firewall. For now, mirage-firewall will not work due to [bug #134](https://github.com/mirage/qubes-mirage-firewall/issues/134) so installation defaults to linux-based firewall. Two firewalls are created by default: fw-net shields the whole system from core-net and fw-tor shields torified qubes from core-tor. That's extra-secure setup, fw-tor is not strictly necessary and can be deleted, in which case you need to set core-tor as network vm for core-update. Once firewall is set up you can set fw-tor (or core-tor) as net vm for any qube you want to torify.
+Two firewall options are offered, linux-based firewall and mirage-firewall, with mirage-firewall installed by default. Two firewalls are created by default: fw-net shields the whole system from core-net and fw-tor shields torified qubes from core-tor. That's extra-secure setup, fw-tor is not strictly necessary and can be deleted, in which case you need to set core-tor as network vm for core-update. Once firewall is set up you can set fw-tor (or core-tor) as net vm for any qube you want to torify.
 
 Network qube core-net is disposable by default, it can be switched to normal appvm in the installation script settings. Disposable core-net makes it more secure but also means any new access points will not be saved automatically. You will need to manually add any newly added access points to either debian-core or core-keys, more on this below.
 
@@ -116,6 +116,12 @@ Disposable VM to run remote desktop sessions. RDP (full support, including sound
 ### Audio
 This creates audio qube called core-sound, that can then be set as audiovm for other qubes.  It generally follows Qubes approach to audio service provisioning, except using tiny custom shell script to run `pacat-simple-vchan` for each qube requiring sound service instead of default monstrous python script with runtime x.org dependency. `lq-volume` script is provided in dom0 to fine-tune pulseaudio volume.
 
+### Print
+Creates printing qube called core-print. This qube has two modes of operation, with and without preview of file to be printed:
+ - Without preview, any pdf file sent via qvm-copy will be automatically sent to default printer. Nice for small home printers that don't really have printing options.
+ - With preview enabled, any file sent to print qube will be opened in pdf previewer (zathura-pdf-poppler by default), you can then print it from there to any installed printer and with any options.
+In addition to creating core-print qube, setup script can create "Qubes Printer" for selected qubes, that is based on cups-pdf. You can then print to this printer, and resulting pdf will be sent to core-print automatically. In case you don't enable print file preview, this creates almost seamless printing experience with printer shared across multiple qubes.
+
 ### Templating mechanism
 This is the key service allowing Liteqube to run different disposable qubes off the same template. It runs very early on boot and checks private partition to ensure it contains only the files needed. Any file not fitting the configuration is put into quarantine or deleted.
 Setup is driven by `/etc/protect` folder that has 4 components:
@@ -129,11 +135,11 @@ As of Liteqube 0.91, core-keys supports providing files, passwords and ssh keys 
 - Files: You need to save a file under `/home/user/<qube name>/<filename>`, this file can then be requested only by that qube through `liteqube.SplitFile` service. Don't forget that this file needs to be added to `/etc/protect` dir (either as checksum or whitelist) otherwise it will be quarantined during the next boot.
 - Passwords: `/home/user` dir contains `password-<qube name>` scripts, receiving token (e.g. username) as command line option and printing password to stdout. It is called by `liteqube.SplitPassword` service that can be used by other qubes for password provisioning. If there is no password present in core-keys, a qube can call `liteqube.SplitPassword` in dom0, you will then be prompted for password and also prompted if it shall be saved into core-keys. Have a look at core-decrypt or core-rdp scripts to see how this works.
 - SSH keys: this is based on ability of ssh-agent to run on a different machine. You store your ssh keys in core-keys in `/home/user/.ssh` as you would do normally. In a qube that needs to use these keys you should start `liteqube-split-ssh.socket` and you should *not* start local ssh-agent. Have a look at core-vpn-ssh scripts to see how this works. 
+- GPG support: similar to ssh-agent, this is based on gpg-agent being able to work over network. Done in preparation for mail qubes integration.
 
 ### Further development
 I use the following components in my daily work, installer scripts will be made available in the coming months:
  - Mail: a couple of qubes that allow mail to be received and sent while keeping your Thunderbird (or any other mail app) offline. Instructions for this one were published [here](https://www.reddit.com/r/Qubes/comments/9q76f2/splitmail_setup/) a few years back.
- - Print: qubes that prints pdfs you through at it.
  - VPN: add openvpn support
  - RDP/VNC: polish vnc support
  
@@ -141,7 +147,7 @@ The following improvements will be made to further enhance security and stabilit
  - Improve security of Liteqube systemd services using builtin systemd tools.
  - Use SELinux (preferred but very difficult due to lack of default profiles) or AppArmour (easier but possibly less secure) to improve security of the apps (networkmanager, tor, exim, getmail, etc) used.
  - Create minimal tray applet to monitor network, tor state and sound volume.
- - Replace Linux firewall with accelerated (see #[130](https://github.com/mirage/qubes-mirage-firewall/issues/130)) mirage firewall.
+ - Add accelerated (see #[130](https://github.com/mirage/qubes-mirage-firewall/issues/130)) mirage firewall.
  - Move from shell scripts to Salt. Liteqube for Qubes 4.1 was started as a set of salt scripts but I switched to pure shell once I realised I spend more time fighting with salt formulas than improving Liteqube.
 
 ### Changelog
@@ -151,5 +157,10 @@ The following improvements will be made to further enhance security and stabilit
  - Includes base system, network and usb components
  
 12 February 2022, version 0.91 'Almost There':
- - Changes to debian-core are now persistent and survive system updates
+ - All changes to debian-core are now persistent and survive system updates
  - Added vpn, storage, vnc/rdp and audio qubes
+
+26 June 2022, version 0.92
+ - Added printing support
+ - Added mirage firewall working on Qubes 4.1, switched to mirage firewall by default
+ - Fixed empty folders not pulled into git repo, ruining the installation
