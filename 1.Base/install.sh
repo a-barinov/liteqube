@@ -116,6 +116,7 @@ qvm-shutdown --quiet --wait --force "${VM_CORE}"
 message "INSTALLING PARTED AND GDISK TOOLS IN ${YELLOW}dom0"
 [ -x /usr/sbin/parted ] || sudo qubes-dom0-update --console --show-output parted
 [ -x /usr/sbin/gdisk ] || sudo qubes-dom0-update --console --show-output gdisk
+[ -x /usr/sbin/e2fsck ] || sudo qubes-dom0-update --console --show-output e2fsprogs
 
 
 if [ x"${VM_CORE_CREATED}" = x"true" ] ; then
