@@ -454,6 +454,8 @@ add_line dom0 "/etc/qubes-rpc/policy/qubes.UpdatesProxy" '\$anyvm \$anyvm deny'
 
 
 message "SETTING DEFAULT NETVM, CLOCKVM AND UPDATEVM"
+qvm-shutdown --quiet --wait --force "${SYS_NET}"
+qvm-start --quiet --skip-if-running "${VM_NET}"
 qvm-prefs --quiet --set "${VM_FW_NET}" netvm "${VM_NET}"
 qvm-start --quiet --skip-if-running "${VM_FW_NET}"
 qubes-prefs --quiet --set default_netvm "${VM_FW_NET}"
