@@ -4,8 +4,8 @@ SYS_NET="sys-net"
 SYS_FIREWALL="sys-firewall"
 . ../.lib/lib.sh
 
-sudo mcedit /etc/yum.repos.d/qubes-dom0.repo
-sudo mcedit /etc/yum.repos.d/qubes-templates.repo
+sudo nano /etc/yum.repos.d/qubes-dom0.repo
+sudo nano /etc/yum.repos.d/qubes-templates.repo
 
 qvm-shutdown --quiet --wait --force "${VM_UPDATE}"
 qvm-shutdown --quiet --wait --force "${VM_FW_TOR}"
