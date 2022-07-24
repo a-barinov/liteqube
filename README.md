@@ -143,29 +143,31 @@ As of Liteqube 0.91, core-keys supports providing files, passwords and ssh keys 
 3. Install Tor Browser into AppVM. For this instruction '\~/.torbrowser' is assumed to be your installation path.
 4. In 'debian-core' run 'tor --hash-password 'your password'
 5. In 'debian-core' edit '/etc/tor/torrc' and add the following lines:
-   'ControlPort 10.x.x.x:9051' where ip is your 'core-tor' ip
-   'HashedControlPassword xxxxxxxxxx' with password hash you obtained in step 4
+```
+    ControlPort 10.x.x.x:9051 # where ip is your 'core-tor' ip
+    HashedControlPassword xxxxxxxxxx # with password hash you obtained in step 4
+```
 6. In AppVM create the following Tor Browser launcher script, e.g. '\~/torbrowser.sh'
-'''
-#!/bin/sh
-TOR_CONTROL_PASSWD='""'   # Note nested quotes around password
-exec \~/.torbrowser/Browser/start-tor-browser --detach --allow-remote
-'''
+```
+    #!/bin/sh
+    TOR_CONTROL_PASSWD='"xxxxxxxxxx"'   # Note nested quotes around password
+    exec ~/.torbrowser/Browser/start-tor-browser --detach --allow-remote
+```
 7. Run Tor Browser
 8. Got to 'about:config' and change the following settings:
-'''
-network.proxy.socks = 10.x.x.x (ip of 'core-tor')
-network.proxy.socks_port = 9050
-extensions.torbutton.inserted_button true
-extensions.torbutton.launch_warning false
-extensions.torbutton.loglevel 2
-extensions.torbutton.logmethod 0
-extensions.torlauncher.control_port 9051
-extensions.torlauncher.loglevel 2
-extensions.torlauncher.logmethod 0
-extensions.torlauncher.prompt_at_startup false
-extensions.torlauncher.start_tor false
-'''
+```
+    network.proxy.socks = 10.x.x.x (ip of 'core-tor')
+    network.proxy.socks_port = 9050
+    extensions.torbutton.inserted_button true
+    extensions.torbutton.launch_warning false
+    extensions.torbutton.loglevel 2
+    extensions.torbutton.logmethod 0
+    extensions.torlauncher.control_port 9051
+    extensions.torlauncher.loglevel 2
+    extensions.torlauncher.logmethod 0
+    extensions.torlauncher.prompt_at_startup false
+    extensions.torlauncher.start_tor false
+```
 9. Restart Tor Browser
 
 Credits for this instruction go to @dostisurta on github
