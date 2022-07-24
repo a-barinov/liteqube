@@ -20,7 +20,7 @@ set -e
 vm_fail_if_missing "${VM_CORE}"
 vm_fail_if_missing "${VM_DVM}"
 vm_create "${VM_AUDIO}" "dispvm"
-vm_configure "${VM_AUDIO}" "hvm" 192 '' ''
+vm_configure "${VM_AUDIO}" "hvm" 208 '' ''
 
 
 message "CONFIGURING ${YELLOW}${VM_CORE}"
