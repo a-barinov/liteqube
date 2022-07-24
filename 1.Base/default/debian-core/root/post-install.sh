@@ -8,14 +8,14 @@ for FILE in $(find /etc/systemd/system -mindepth 2 | grep -v -e qubes-sync-time.
     IFS="${OLD_IFS}"
     SERVICE="$(basename ${FILE})"
     rm -f "${FILE}"
-    if [ "${SERVICE}" = "cron.service" ] || [ "${SERVICE}" = "qubes-mminfo-writer.service" ] || [ "${SERVICE}" = "remote-fs.service" ] || [ "${SERVICE}" = "systemd-timesyncd.service" ] || [ "${SERVICE}" = "systemd-fsck-root.service" ] || [ "${SERVICE}" = "systemd-jornal-flush.service" ] || [ "${SERVICE}" = "systemd-update-umtp.service" ] || [ "${SERVICE}" = "systemd-tmpfiles-clean.service" ] || [ "${SERVICE}" = "dev-xvdc1-swap.service" ] || [ "${SERVICE}" = "systemd-update-umtp-runlevel.service" ] || [ "${SERVICE}" = "systemd.rfkill.service" ] ; then
+    if [ "${SERVICE}" = "cron.service" ] || [ "${SERVICE}" = "qubes-meminfo-writer.service" ] || [ "${SERVICE}" = "remote-fs.service" ] || [ "${SERVICE}" = "systemd-timesyncd.service" ] || [ "${SERVICE}" = "systemd-fsck-root.service" ] || [ "${SERVICE}" = "systemd-jornal-flush.service" ] || [ "${SERVICE}" = "systemd-update-umtp.service" ] || [ "${SERVICE}" = "systemd-tmpfiles-clean.service" ] || [ "${SERVICE}" = "dev-xvdc1-swap.service" ] || [ "${SERVICE}" = "systemd-update-umtp-runlevel.service" ] || [ "${SERVICE}" = "systemd.rfkill.service" ] ; then
         systemctl mask "${SERVICE}" 2>/dev/null
     fi
     IFS="${NEWLINE}"
 done
 
 IFS="${OLD_IFS}"
-for SERVICE in "cron.service" "qubes-mminfo-writer.service" "remote-fs.service" "systemd-timesyncd.service" "systemd-fsck-root.service" "systemd-jornal-flush.service" "systemd-update-umtp.service" "systemd-tmpfiles-clean.service" "dev-xvdc1-swap.service" "systemd-update-umtp-runlevel.service" "systemd.rfkill.service" ; do
+for SERVICE in "cron.service" "qubes-mminfo-writer.service" "remote-fs.service" "systemd-timesyncd.service" "systemd-fsck-root.service" "systemd-jornal-flush.service" "systemd-update-umtp.service" "systemd-tmpfiles-clean.service" "dev-xvdc1-swap.service" "systemd-update-umtp-runlevel.service" "systemd-rfkill.service" "htpdate.service" ; do
     [ -e "/etc/systemd/system/${SERVICE}" ] || systemctl mask "${SERVICE}" 2>/dev/null
 done
 
