@@ -59,9 +59,9 @@ message()
 
 vm_exists()
 {
-    _VM="${1}"
+    _VMEX_VM="${1}"
 
-    if [ -d "/var/lib/qubes/vm-templates/${_VM}" ] || [ -d "/var/lib/qubes/appvms/${_VM}" ] ; then
+    if [ -d "/var/lib/qubes/vm-templates/${_VMEX_VM}" ] || [ -d "/var/lib/qubes/appvms/${_VMEX_VM}" ] ; then
         return 0
     else
         return 1
@@ -70,19 +70,19 @@ vm_exists()
 
 vm_create()
 {
-    _VMC_VM="${1}"
-    _VMC_TYPE="${2}"
+    _VM="${1}"
+    _TYPE="${2}"
 
-    if vm_exists "${_VMC_VM}" ; then
-        message "VM ${YELLOW}${_VMC_VM}${PREFIX} ALREADY EXISTS"
+    if vm_exists "${_VM}" ; then
+        message "VM ${YELLOW}${_VM}${PREFIX} ALREADY EXISTS"
     else
-        message "CREATING ${YELLOW}${_VMC_VM}"
-        case ${_VMC_TYPE} in
+        message "CREATING ${YELLOW}${_VM}"
+        case ${_TYPE} in
             dispvm)
-                qvm-create --class DispVM --template "${VM_DVM}" --label "${COLOR_WORKERS}" "${_VMC_VM}"
+                qvm-create --class DispVM --template "${VM_DVM}" --label "${COLOR_WORKERS}" "${VM_AUDIO}"
                 ;;
             *)
-                message "ERROR: UNKNOWN VM TYPE ${YELLOW}${_VMC_TYPE}${PREFIX} FOR ${YELLOW}${_VMC_VM}${PREFIX}"
+                message "ERROR: UNKNOWN VM TYPE ${YELLOW}${_TYPE}${PREFIX} FOR ${YELLOW}${_VM}${PREFIX}"
                 exit 1
                 ;;
         esac
