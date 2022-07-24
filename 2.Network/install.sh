@@ -110,7 +110,7 @@ if [ x"${USE_MIRAGE}" = x"True" ] ; then  # Mirage firewall
     message "CONFIGURING ${YELLOW}${VM_FW_NET}"
     qvm-prefs --quiet --set "${VM_FW_NET}" label "${COLOR_WORKERS}"
     qvm-prefs --quiet --set "${VM_FW_NET}" maxmem 0
-    qvm-prefs --quiet --set "${VM_FW_NET}" memory 32
+    qvm-prefs --quiet --set "${VM_FW_NET}" memory 64
     qvm-prefs --quiet --set "${VM_FW_NET}" vcpus 1
     qvm-prefs --quiet --set "${VM_FW_NET}" provides_network True
     if cat /var/lib/qubes/vm-kernels/mirage-firewall/vmlinuz | grep Solo5 >/dev/null 2>&1 ; then
@@ -131,7 +131,7 @@ if [ x"${USE_MIRAGE}" = x"True" ] ; then  # Mirage firewall
     message "CONFIGURING ${YELLOW}${VM_FW_TOR}"
     qvm-prefs --quiet --set "${VM_FW_TOR}" label "${COLOR_WORKERS}"
     qvm-prefs --quiet --set "${VM_FW_TOR}" maxmem 0
-    qvm-prefs --quiet --set "${VM_FW_TOR}" memory 32
+    qvm-prefs --quiet --set "${VM_FW_TOR}" memory 64
     qvm-prefs --quiet --set "${VM_FW_TOR}" vcpus 1
     qvm-prefs --quiet --set "${VM_FW_TOR}" provides_network True
     if cat /var/lib/qubes/vm-kernels/mirage-firewall/vmlinuz | grep Solo5 >/dev/null 2>&1 ; then
@@ -454,8 +454,6 @@ add_line dom0 "/etc/qubes-rpc/policy/qubes.UpdatesProxy" '\$anyvm \$anyvm deny'
 
 
 message "SETTING DEFAULT NETVM, CLOCKVM AND UPDATEVM"
-qvm-shutdown --quiet --wait --force "${SYS_NET}"
-qvm-start --quiet --skip-if-running "${VM_NET}"
 qvm-prefs --quiet --set "${VM_FW_NET}" netvm "${VM_NET}"
 qvm-start --quiet --skip-if-running "${VM_FW_NET}"
 qubes-prefs --quiet --set default_netvm "${VM_FW_NET}"
@@ -509,9 +507,14 @@ qvm-shutdown --quiet --wait --force "${VM_FW_NET}"
 qvm-shutdown --quiet --wait --force "${VM_NET}"
 qvm-prefs --quiet --set "${VM_FW_NET}" memory 128
 qvm-prefs --quiet --set "${VM_FW_TOR}" memory 128
-qvm-prefs --quiet --set "${VM_NET}" memory 192
+qvm-prefs --quiet --set "${VM_NET}" memory 208
 qvm-prefs --quiet --set "${VM_TOR}" memory 160
 qvm-start --quiet --skip-if-running "${VM_NET}"
+
+
+# TODO recover Tor connection after sleep (adjust time)
+# TODO terminate firewalls and tor after X minutes of having no clients connected
+# TODO suggest saving AP on new connection
 
 
 message "DONE!"

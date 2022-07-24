@@ -47,14 +47,14 @@ else
     qrexec-client-vm -tT dom0 "liteqube.SignalWifi+EN-1"
     get_ap_name
     get_ap_status
+    #[ x"${WIFI_AP}" = x"" ] || qrexec-client-vm -tT core-tor "liteqube.TorSetAP+${WIFI_AP}"
     if [ x"${WIFI_STATUS}" = x"connected" ] ; then
-        [ x"${WIFI_AP}" = x"" ] || qrexec-client-vm -tT core-tor "liteqube.TorSetAP+${WIFI_AP}"
         qrexec-client-vm -tT dom0 "liteqube.SignalWifi+AP-${WIFI_AP}"
         qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-100"
         get_signal_strength
-        [ -z "${WIFI_SIGNAL}" ] || qrexec-client-vm -tT dom0 "liteqube.SignalWifi+SI-${WIFI_SIGNAL}"
+        [ -z "${WIFI_SIGNAL}" ] || WIFI_SIGNAL="0"
+        qrexec-client-vm -tT dom0 "liteqube.SignalWifi+SI-${WIFI_SIGNAL}"
     else
-        [ x"${WIFI_AP}" = x"" ] || qrexec-client-vm -tT core-tor "liteqube.TorSetAP+${WIFI_AP}"
         [ x"${WIFI_STATUS}" = x"disconnected" ] && qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-0"
         [ x"${WIFI_STATUS}" = x"connecting" ] && qrexec-client-vm -tT dom0 "liteqube.SignalWifi+ST-30"
     fi
