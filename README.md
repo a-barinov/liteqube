@@ -137,6 +137,39 @@ As of Liteqube 0.91, core-keys supports providing files, passwords and ssh keys 
 - SSH keys: this is based on ability of ssh-agent to run on a different machine. You store your ssh keys in core-keys in `/home/user/.ssh` as you would do normally. In a qube that needs to use these keys you should start `liteqube-split-ssh.socket` and you should *not* start local ssh-agent. Have a look at core-vpn-ssh scripts to see how this works. 
 - GPG support: similar to ssh-agent, this is based on gpg-agent being able to work over network. Done in preparation for mail qubes integration.
 
+### Using Tor Browser with 'core-tor'
+1. Create an AppVM for Tor Browser
+2. Set 'core-tor' as netvm for your AppVM
+3. Install Tor Browser into AppVM. For this instruction '\~/.torbrowser' is assumed to be your installation path.
+4. In 'debian-core' run 'tor --hash-password 'your password'
+5. In 'debian-core' edit '/etc/tor/torrc' and add the following lines:
+   'ControlPort 10.x.x.x:9051' where ip is your 'core-tor' ip
+   'HashedControlPassword xxxxxxxxxx' with password hash you obtained in step 4
+6. In AppVM create the following Tor Browser launcher script, e.g. '\~/torbrowser.sh'
+'''
+#!/bin/sh
+TOR_CONTROL_PASSWD='""'   # Note nested quotes around password
+exec \~/.torbrowser/Browser/start-tor-browser --detach --allow-remote
+'''
+7. Run Tor Browser
+8. Got to 'about:config' and change the following settings:
+'''
+network.proxy.socks = 10.x.x.x (ip of 'core-tor')
+network.proxy.socks_port = 9050
+extensions.torbutton.inserted_button true
+extensions.torbutton.launch_warning false
+extensions.torbutton.loglevel 2
+extensions.torbutton.logmethod 0
+extensions.torlauncher.control_port 9051
+extensions.torlauncher.loglevel 2
+extensions.torlauncher.logmethod 0
+extensions.torlauncher.prompt_at_startup false
+extensions.torlauncher.start_tor false
+'''
+9. Restart Tor Browser
+
+Credits for this instruction go to @dostisurta on github
+
 ### Further development
 I use the following components in my daily work, installer scripts will be made available in the coming months:
  - Mail: a couple of qubes that allow mail to be received and sent while keeping your Thunderbird (or any other mail app) offline. Instructions for this one were published [here](https://www.reddit.com/r/Qubes/comments/9q76f2/splitmail_setup/) a few years back.
