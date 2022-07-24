@@ -1,0 +1,2 @@
+core-sound $adminvm allow,target=$adminvm
+core-sound core-rdp allow,target=$adminvm
