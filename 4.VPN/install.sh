@@ -61,7 +61,7 @@ if [ x"${VPN_SSH}" = x"True" ] ; then
 
     message "CONFIGURING ${YELLOW}${VM_CORE}"
     qvm-start --quiet --skip-if-running "${VM_CORE}"
-    push_command "${VM_CORE}" "apt-get -q -y install redsocks"
+    push_command "${VM_CORE}" "apt-get -q -y install redsocks net-tools"
     add_line "${VM_CORE}" "/etc/hosts" "127.0.1.1       ${VM_NAME}"
     push_from_dir "./default.ssh" "${VM_CORE}"
     for SERVICE in redsocks ; do
@@ -92,6 +92,17 @@ message "DONE CUSTOMISING"
 
 message "TERMINATING ${YELLOW}${VM_CORE}"
 qvm-shutdown --quiet --wait --force "${VM_CORE}"
+
+
+# TODO: block non-tcp traffic except dns for ssh
+# TODO: openvpn provider
+# TODO: multiple profiles for ssh
+#   systemctl start myservice@"arg1 arg2 arg3".service
+#   [Service]
+#   Environment="SCRIPT_ARGS=%I"
+#   ExecStart=/tmp/test.py $SCRIPT_ARGS
+#   ExecStart=/tmp/test.py %I
+# TODO: proxy dns requests into dns-over-https (dnscrypt-proxy, ideally https-dns-proxy)
 
 
 message "DONE!"
