@@ -50,7 +50,7 @@ if [ x"${VPN_SSH}" = x"True" ] ; then
 
     message "CONFIGURING ${YELLOW}${VM_NAME}"
     qvm-prefs --quiet --set "${VM_NAME}" maxmem 0
-    qvm-prefs --quiet --set "${VM_NAME}" memory 142
+    qvm-prefs --quiet --set "${VM_NAME}" memory 144
     qvm-prefs --quiet --set "${VM_NAME}" provides_network True
     qvm-prefs --quiet --set "${VM_NAME}" netvm "${VM_FW_NET}"
     #qvm-prefs --quiet --set "${VM_NAME}" guivm ''
