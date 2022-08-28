@@ -14,22 +14,10 @@ SINK="$(pacmd list-sinks | grep '* index' | cut -d' ' -f5)"
 pactl subscribe | while read LINE ; do
     IFS=' ' set -- "junk" ${LINE}
     case "${LINE}" in
-        *new*sink*)
+        *new*sink* | *remove*sink*)
             NEW_SINK="$(pacmd list-sinks | grep '* index' | cut -d' ' -f5)"
-            if [ x"${NEW_SINK}" != x"${SINK}" ] ; then
-                SINK="${NEW_SINK}"
-                report_volume
-            fi
-            ;;
-        *remove*sink*)
-            NEW_SINK="$(pacmd list-sinks | grep '* index' | cut -d' ' -f5)"
-            if [ x"${NEW_SINK}" != x"${SINK}" ] ; then
-                SINK="${NEW_SINK}"
-                report_volume
-            fi
-            ;;
+            [ x"${NEW_SINK}" != x"${SINK}" ] && SINK="${NEW_SINK}" && report_volume ;;
         *change*sink*)
-            [ x"#${SINK}" = x"${6}" ] && report_volume
-            ;;
+            [ x"#${SINK}" = x"${6}" ] && report_volume ;;
     esac
 done

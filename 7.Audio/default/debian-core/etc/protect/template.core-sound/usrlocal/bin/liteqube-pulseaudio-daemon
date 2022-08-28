@@ -1,0 +1,22 @@
+#!/bin/bash
+
+check_vm() {
+    CHECK_AUDIOVM="$(echo -n '' | qrexec-client-vm "${1}" admin.vm.property.Get+audiovm)" CHECK_AUDIOVM="${CHECK_AUDIOVM##* }" 2>/dev/null
+    CHECK_XID="$(echo -n '' | qrexec-client-vm "${1}" admin.vm.property.Get+xid)" CHECK_XID="${CHECK_XID##* }" 2>/dev/null
+    [ x"${CHECK_AUDIOVM}" = x"${AUDIOVM}" ] && /usr/bin/pacat-simple-vchan "${CHECK_XID}" "${1}" &
+}
+
+AUDIOVM="$(xenstore-read name)"
+while IFS= read -rd '' EVENT_WORD ; do
+    [ -n "${EVENT_WORD}" ] && { EVENT_LINE="${EVENT_LINE}${EVENT_WORD} " ; continue ; }
+    case "${EVENT_LINE}" in
+        *connection-established*)
+            while IFS=' ' read -r VM_NAME VM_CLASS VM_STATE ; do
+                [ x"${VM_CLASS}" != x"class=AdminVM" -a x"${VM_STATE}" = x"state=Running" ] && check_vm "${VM_NAME#0}"
+            done < <(echo -n '' | qrexec-client-vm dom0 admin.vm.List) ;;
+        *domain-start*)
+            IFS=' ' set -- "junk" ${EVENT_LINE}
+            [ x"${4}" = x"domain-start" ] && check_vm "${3}" ;;
+    esac
+    EVENT_LINE=""
+done < <(echo -n '' | qrexec-client-vm dom0 admin.Events)

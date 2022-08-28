@@ -7,6 +7,6 @@ User=user
 Group=user
 StandardOutput=journal
 StandardError=journal
-ExecStart=/rw/config/liteqube-pulseaudio-monitor
+ExecStart=/usr/local/bin/liteqube-pulseaudio-monitor
 Restart=always
 RestartSec=10

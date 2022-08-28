@@ -200,16 +200,14 @@ push_custom_files()
 
 add_line()
 {
-    _VM="${1}"
-    _FILE="${2}"
-    _LINE="${3}"
+    _ADL_VM="${1}"
+    _ADL_FILE="${2}"
+    _ADL_LINE="${3}"
 
-    if [ x"${_VM}" = x"dom0" ] ; then
-        if ! sudo cat "${_FILE}" | grep "${_LINE}" >/dev/null 2>&1 ; then
-            sudo /bin/sh -c "echo \"${_LINE}\" >> \"${_FILE}\""
-        fi
+    if [ x"${_ADL_VM}" = x"dom0" ] ; then
+        sudo cat "${_ADL_FILE}" | grep "${_ADL_LINE}" >/dev/null 2>&1 || sudo /bin/sh -c "echo \"${_ADL_LINE}\" >> \"${_ADL_FILE}\""
     else
-        qrexec-client -d "${_VM}" root:"if ! cat \"${_FILE}\" | grep \"${_LINE}\" >/dev/null 2>&1 ; then echo \"${_LINE}\" >> \"${_FILE}\" ; fi"
+        qrexec-client -d "${_ADL_VM}" root:"cat \"${_ADL_FILE}\" | grep \"${_ADL_LINE}\" >/dev/null 2>&1 || echo \"${_ADL_LINE}\" >> \"${_ADL_FILE}\""
     fi
 }
 
@@ -297,7 +295,11 @@ add_permission()
     _ADP_VM_FROM="${2}"
     _ADP_VM_TO="${3}"
     _ADP_PERMISSION="${4}"
-    add_line dom0 "/etc/qubes-rpc/policy/liteqube.${_ADP_PERMISSION_NAME}" "${_ADP_VM_FROM} ${_ADP_VM_TO} ${_ADP_PERMISSION}"
+    if [ -e "/etc/qubes-rpc/${_ADP_PERMISSION_NAME}" ] ; then
+        add_line dom0 "/etc/qubes-rpc/policy/${_ADP_PERMISSION_NAME}" "${_ADP_VM_FROM} ${_ADP_VM_TO} ${_ADP_PERMISSION}"
+    else
+        add_line dom0 "/etc/qubes-rpc/policy/liteqube.${_ADP_PERMISSION_NAME}" "${_ADP_VM_FROM} ${_ADP_VM_TO} ${_ADP_PERMISSION}"
+    fi
 }
 
 vm_find_template()
@@ -329,4 +331,22 @@ vm_type()
             esac
             ;;
     esac
+}
+
+cleanup_file()
+{
+    _CLNF_FILE="${1}"
+    _CLNF_STRING="${2}"
+    if [ -f "${_CLNF_FILE}" ] ; then
+        sudo sed -i "/${_CLNF_STRING}/d" "${_CLNF_FILE}"
+        [ -z "$(sudo cat ${_CLNF_FILE})" ] && sudo rm "${_CLNF_FILE}" || true
+    fi
+}
+
+install_settings()
+{
+    _INSTS_VM="${1}"
+    _INSTS_TARGET="/etc/protect/template.${_INSTS_VM}/config/liteqube-settings"
+    file_to_vm "./settings-qube.sh" "${VM_CORE}" "${_INSTS_TARGET}"
+    push_command "${VM_CORE}" "chmod 755 ${_INSTS_TARGET}"
 }
