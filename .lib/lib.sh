@@ -70,19 +70,19 @@ vm_exists()
 
 vm_create()
 {
-    _VM="${1}"
-    _TYPE="${2}"
+    _VMC_VM="${1}"
+    _VMC_TYPE="${2}"
 
-    if vm_exists "${_VM}" ; then
-        message "VM ${YELLOW}${_VM}${PREFIX} ALREADY EXISTS"
+    if vm_exists "${_VMC_VM}" ; then
+        message "VM ${YELLOW}${_VMC_VM}${PREFIX} ALREADY EXISTS"
     else
-        message "CREATING ${YELLOW}${_VM}"
-        case ${_TYPE} in
+        message "CREATING ${YELLOW}${_VMC_VM}"
+        case ${_VMC_TYPE} in
             dispvm)
-                qvm-create --class DispVM --template "${VM_DVM}" --label "${COLOR_WORKERS}" "${VM_AUDIO}"
+                qvm-create --class DispVM --template "${VM_DVM}" --label "${COLOR_WORKERS}" "${_VMC_VM}"
                 ;;
             *)
-                message "ERROR: UNKNOWN VM TYPE ${YELLOW}${_TYPE}${PREFIX} FOR ${YELLOW}${_VM}${PREFIX}"
+                message "ERROR: UNKNOWN VM TYPE ${YELLOW}${_VMC_TYPE}${PREFIX} FOR ${YELLOW}${_VMC_VM}${PREFIX}"
                 exit 1
                 ;;
         esac
