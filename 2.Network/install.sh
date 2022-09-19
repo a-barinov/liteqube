@@ -10,6 +10,10 @@ NETVM_DISPOSABLE="True"
 # Space-separated list of package names [with network cards firmware] to install
 FIRMWARE_PACKAGES="firmware-iwlwifi"
 
+# Net vm memory in Mb. Default works fine for intel drivers but you may need to allocate
+# more memory if net qube crashes or hangs on start.
+NET_VM_MEMORY="208"
+
 # Set to "True" to not require PCI device reset
 NET_NO_STRICT_RESET="True"
 
@@ -454,6 +458,16 @@ add_line dom0 "/etc/qubes-rpc/policy/qubes.UpdatesProxy" '\$type:TemplateVM \$de
 add_line dom0 "/etc/qubes-rpc/policy/qubes.UpdatesProxy" '\$anyvm \$anyvm deny'
 
 
+message "SHUTTING DOWN NETWORK QUBES"
+qvm-shutdown --quiet --wait --force "${SYS_FIREWALL}"
+qvm-shutdown --quiet --wait --force "${SYS_NET}"
+qvm-shutdown --quiet --wait --force "${VM_FW_TOR}"
+qvm-shutdown --quiet --wait --force "${VM_TOR}"
+qvm-shutdown --quiet --wait --force "${VM_FW_NET}"
+qvm-shutdown --quiet --wait --force "${VM_NET}"
+sleep 3
+
+
 message "SETTING DEFAULT NETVM, CLOCKVM AND UPDATEVM"
 qvm-prefs --quiet --set "${VM_FW_NET}" netvm "${VM_NET}"
 qvm-start --quiet --skip-if-running "${VM_FW_NET}"
@@ -508,7 +522,7 @@ qvm-shutdown --quiet --wait --force "${VM_FW_NET}"
 qvm-shutdown --quiet --wait --force "${VM_NET}"
 qvm-prefs --quiet --set "${VM_FW_NET}" memory 128
 qvm-prefs --quiet --set "${VM_FW_TOR}" memory 128
-qvm-prefs --quiet --set "${VM_NET}" memory 208
+qvm-prefs --quiet --set "${VM_NET}" memory "${NET_VM_MEMORY}"
 qvm-prefs --quiet --set "${VM_TOR}" memory 160
 qvm-start --quiet --skip-if-running "${VM_NET}"
 

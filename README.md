@@ -93,6 +93,8 @@ core-tor also acts as clockvm, synchronising time with several onion services vi
 
 During the installation, your dom0 update source will be changed to onion Qubes OS site. I hope you don't mind.
 
+If core net crashes or hangs on start (can happen if your network drivers require more memoty than intel's), try increasing memory allocated to 'core-net' from 208Mb to something bigger.
+
 ### USB
 This will create core-usb disposable qube and assign all sys-usb devises to it. [Usbguard](https://usbguard.github.io/) is deployed by default and is configured to only accept usb disks. To allow other device types (input devices, usb hubs, cameras, etc) you will need to tweak `/etc/usbguard/rules.conf` in debian-core.
 
