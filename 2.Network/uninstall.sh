@@ -1,8 +1,9 @@
 #!/bin/sh
 
+chmod +x ../.lib/lib.sh
+. ../.lib/lib.sh
 SYS_NET="sys-net"
 SYS_FIREWALL="sys-firewall"
-. ../.lib/lib.sh
 
 sudo nano /etc/yum.repos.d/qubes-dom0.repo
 sudo nano /etc/yum.repos.d/qubes-templates.repo

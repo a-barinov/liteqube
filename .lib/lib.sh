@@ -232,6 +232,7 @@ dom0_command()
 
     [ -d ~/bin ] || mkdir ~/bin
     cp "./files/${_FILE}" ~/bin
+    chmod +x "~/bin/${_FILE}"
 }
 
 dom0_install_command()
@@ -240,6 +241,7 @@ dom0_install_command()
 
     [ -d ~/bin ] || mkdir ~/bin
     cp "./files/${_DIC_FILE}" ~/bin
+    chmod +x "~/bin/${_DIC_FILE}"
 }
 
 file_to_vm()

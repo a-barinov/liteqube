@@ -10,6 +10,7 @@ REMOTE_APPS="freerdp2-x11 xtightvncviewer"
 #########################################################################
 
 
+chmod +x ../.lib/lib.sh
 . ../.lib/lib.sh
 set -e
 

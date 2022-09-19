@@ -1,7 +1,8 @@
 #!/bin/sh
 
-SYS_USB="sys-usb"
+chmod +x ../.lib/lib.sh
 . ../.lib/lib.sh
+SYS_USB="sys-usb"
 
 qvm-shutdown --quiet --wait --force "${VM_USB}"
 

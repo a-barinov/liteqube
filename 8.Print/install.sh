@@ -14,6 +14,8 @@ PRINTER_DRIVERS=""
 #########################################################################
 #       Do not edit code below unless you know what you are doing       #
 #########################################################################
+
+chmod +x ../.lib/lib.sh
 . ../.lib/lib.sh
 set -e
 
