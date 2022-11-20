@@ -225,7 +225,7 @@ replace_text()
     fi
 }
 
-# TODO: deprecate
+#TODO remove once all installers are upgraded
 dom0_command()
 {
     _FILE="${1}"
@@ -241,6 +241,9 @@ dom0_install_command()
 
     [ -d ~/bin ] || mkdir ~/bin
     cp "./files/${_DIC_FILE}" ~/bin
+    [ ! -e "./dom0-scripts/${_DIC_FILE}" ] || cp "./dom0-scripts/${_DIC_FILE}" ~/bin
+    #TODO remove once all installers are upgraded
+    [ ! -e "./files/${_DIC_FILE}" ] || cp "./files/${_DIC_FILE}" ~/bin
     chmod +x "~/bin/${_DIC_FILE}"
 }
 
