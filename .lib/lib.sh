@@ -205,7 +205,7 @@ add_line()
     _ADL_LINE="${3}"
 
     if [ x"${_ADL_VM}" = x"dom0" ] ; then
-        sudo cat "${_ADL_FILE}" | grep "${_ADL_LINE}" >/dev/null 2>&1 || sudo /bin/sh -c "echo \"${_ADL_LINE}\" >> \"${_ADL_FILE}\""
+        sudo cat "${_ADL_FILE}" 2>/dev/null | grep -q "${_ADL_LINE}" >/dev/null 2>&1 || sudo /bin/sh -c "echo \"${_ADL_LINE}\" >> \"${_ADL_FILE}\""
     else
         qrexec-client -d "${_ADL_VM}" root:"cat \"${_ADL_FILE}\" | grep \"${_ADL_LINE}\" >/dev/null 2>&1 || echo \"${_ADL_LINE}\" >> \"${_ADL_FILE}\""
     fi
