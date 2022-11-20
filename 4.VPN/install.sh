@@ -1,110 +1,90 @@
 #!/bin/bash
 
 
-# Create ssh vpn, anything except True will skip vm creation
-VPN_SSH="True"
-
-
-#########################################################################
-#       Do not edit code below unless you know what you are doing       #
-#########################################################################
-
-
-chmod +x ../.lib/lib.sh
 . ../.lib/lib.sh
+. ./settings-installer.sh
 set -e
+#set -x
 
 
-if ! vm_exists "${VM_CORE}" ; then
-    message "ERROR: ${YELLOW}${VM_CORE}${PREFIX} NOT FOUND, PLEASE RUN BASE INSTALL"
+if [ -z "${VPN_SSH}" -a -z "${VPN_OVPN}" ] ; then
+    message "Please set at least one of 'VPN_SSH' or 'VPN_OVPN' in ${YELLOW}settings-installer.sh${PREFIX} to proceed"
     exit 1
 fi
-if ! vm_exists "${VM_DVM}" ; then
-    message "ERROR: ${YELLOW}${VM_DVM}${PREFIX} NOT FOUND, PLEASE RUN BASE INSTALL"
-    exit 1
-fi
-if ! vm_exists "${VM_XORG}" ; then
-    message "ERROR: ${YELLOW}${VM_XORG}${PREFIX} NOT FOUND, PLEASE RUN BASE INSTALL"
-    exit 1
-fi
-if ! vm_exists "${VM_KEYS}" ; then
-    message "ERROR: ${YELLOW}${VM_DVM}${PREFIX} NOT FOUND, PLEASE RUN BASE INSTALL"
-    exit 1
-fi
-if ! vm_exists "${VM_FW_NET}" ; then
-    message "ERROR: ${YELLOW}${VM_FW_NET}${PREFIX} NOT FOUND, PLEASE RUN NETWORK INSTALL"
-    exit 1
-fi
+vm_fail_if_missing "${VM_CORE}"
+vm_fail_if_missing "${VM_DVM}"
+vm_fail_if_missing "${VM_KEYS}"
 
+vm_exists "${VM_VPN}" && qvm-shutdown --quiet --wait --force "${VM_VPN}" || vm_create "${VM_VPN}" "dispvm"
+message "CONFIGURING ${YELLOW}${VM_VPN}"
+vm_configure "${VM_VPN}" "pvh" 176 "${VM_FW_NET}" ''
+qvm-prefs --quiet --set "${VM_VPN}" provides_network True
+vm_exists "${VM_FW_NET}"|| qvm-prefs --quiet --default "${VM_VPN}" netvm
 
-if [ x"${VPN_SSH}" = x"True" ] ; then
+message "CONFIGURING ${YELLOW}${VM_CORE}"
+qvm-start --quiet --skip-if-running "${VM_CORE}"
+push_files "${VM_CORE}"
+add_line "${VM_CORE}" "/etc/hosts" "127.0.0.1 ${VM_VPN}"
+install_settings "${VM_VPN}"
 
-    VM_NAME="${VM_VPN}-ssh"
+message "CONFIGURING ${YELLOW}dom0"
+push_files "dom0"
+add_permission "Message" "${VM_VPN}" "dom0" "allow"
+add_permission "Error" "${VM_VPN}" "dom0" "allow"
+add_permission "SplitXorg" "${VM_VPN}" "${VM_XORG}" "allow"
+add_permission "SignalVPN" "${VM_VPN}" "dom0" "allow"
+dom0_install_command lq-vpn
+# TODO This is only needed until Base is updated
+dom0_install_command lq-addkey
 
-    if ! vm_exists "${VM_NAME}" ; then
-        message "CREATING ${YELLOW}${VM_NAME}"
-        qvm-create --class DispVM --template "${VM_DVM}" --label "${COLOR_WORKERS}" "${VM_NAME}"
-    else
-        message "VM ${YELLOW}${VM_NAME}${PREFIX} ALREADY EXISTS"
-    fi
-
-
-    message "CONFIGURING ${YELLOW}${VM_NAME}"
-    qvm-prefs --quiet --set "${VM_NAME}" maxmem 0
-    qvm-prefs --quiet --set "${VM_NAME}" memory 144
-    qvm-prefs --quiet --set "${VM_NAME}" provides_network True
-    qvm-prefs --quiet --set "${VM_NAME}" netvm "${VM_FW_NET}"
-    #qvm-prefs --quiet --set "${VM_NAME}" guivm ''
-    qvm-prefs --quiet --set "${VM_NAME}" audiovm ''
-    qvm-prefs --quiet --set "${VM_NAME}" vcpus 1
-    qvm-prefs --quiet --set "${VM_NAME}" virt_mode pvh
-
-
-    message "CONFIGURING ${YELLOW}${VM_CORE}"
-    qvm-start --quiet --skip-if-running "${VM_CORE}"
-    push_command "${VM_CORE}" "apt-get -q -y install redsocks net-tools"
-    add_line "${VM_CORE}" "/etc/hosts" "127.0.1.1       ${VM_NAME}"
+if [ -n "${VPN_SSH}" ] ; then
+    message "CONFIGURING ${YELLOW}${VM_CORE}${PREFIX} FOR SSH VPN"
+    push_command "${VM_CORE}" "apt-get -q -y install redsocks net-tools dnscrypt-proxy"
     push_from_dir "./default.ssh" "${VM_CORE}"
-    for SERVICE in redsocks ; do
-        push_command "${VM_CORE}" "systemctl stop ${SERVICE} >/dev/null 2>&1" >/dev/null 2>&1 || true
-        push_command "${VM_CORE}" "systemctl disable ${SERVICE} >/dev/null 2>&1" >/dev/null 2>&1 || true
+
+    message "PUSHING SSH FILES TO ${YELLOW}${VM_KEYS}"
+    message "PUT ${YELLOW}id_rsa, id_rsa.pub, known_hosts${PREFIX} INTO ${YELLOW}./files.ssh${PREFIX} AND PRESS ENTER"
+    read INPUT
+
+    [ ! -e "./files.ssh/known_hosts" ] || cat "./files.ssh/known_hosts" | push_command "${VM_CORE}" "cat > /etc/protect/template.${VM_VPN}/home/user/.ssh/known_hosts"
+
+    for FILE in ./files.ssh/id_rsa* ; do
+        checksum_to_vm "${FILE}" "${VM_KEYS}" "/home/user/.ssh/$(basename "$FILE")"
     done
-    set -- "junk" $(qvm-prefs ${VM_NAME} | grep '^ip ' )
-    replace_text "${VM_CORE}" "/etc/redsocks.conf" "512.512.512.512" "${4}"
 
+    push_command "${VM_KEYS}" "chmod 0600 /home/user/.ssh/*"
+    push_command "${VM_KEYS}" "chown user:user /home/user/.ssh/*"
+    push_command "${VM_CORE}" "chmod 0600 /etc/protect/checksum.${VM_KEYS}/home/user/.ssh/*"
+    push_command "${VM_CORE}" "chown user:user /etc/protect/checksum.${VM_KEYS}/home/user/.ssh/*"
 
-    message "CONFIGURING ${YELLOW}dom0"
-    push_from_dir "./default.ssh" "dom0"
-    add_line dom0 "/etc/qubes-rpc/policy/liteqube.Message" "${VM_NAME} dom0 allow"
-    add_line dom0 "/etc/qubes-rpc/policy/liteqube.Error" "${VM_NAME} dom0 allow"
-    add_line dom0 "/etc/qubes-rpc/policy/liteqube.SplitSSH" "${VM_NAME} ${VM_KEYS} ask,default_target=${VM_KEYS}"
-    add_line dom0 "/etc/qubes-rpc/policy/liteqube.SignalVPN" "${VM_NAME} dom0 allow"
-    add_line dom0 "/etc/qubes-rpc/policy/liteqube.SplitXorg" "${VM_NAME} ${VM_XORG} allow"
+    message "CONFIGURING ${YELLOW}dom0${PREFIX} FOR SSH VPN"
+    add_permission "SplitSSH" "${VM_VPN}" "${VM_KEYS}" "ask,default_target=${VM_KEYS}"
+fi
 
-fi # SSH VPN
+if [ -n "${VPN_OVPN}" ] ; then
+    message "CONFIGURING ${YELLOW}${VM_CORE}${PREFIX} FOR OPENVPN"
+    push_command "${VM_CORE}" "apt-get -q -y install openvpn"
+    push_from_dir "./default.ovpn" "${VM_CORE}"
 
+    message "PUSHING OPENVPN CONFIG FILES TO ${YELLOW}${VM_KEYS}"
+    message "PUT ZIP FILES WITH OPENVPN CONFIG INTO ${YELLOW}./files.ovpn${PREFIX} AND PRESS ENTER"
+    read INPUT
+    qvm-start --quiet --skip-if-running "${VM_KEYS}"
+    for FILE in ./files.ovpn/*.zip ; do
+        checksum_to_vm "${FILE}" "${VM_KEYS}" "/home/user/${VM_VPN}/$(basename "$FILE")"
+    done
+
+    message "CONFIGURING ${YELLOW}dom0${PREFIX} FOR OPENVPN"
+    add_permission "SplitFile" "${VM_VPN}" "${VM_KEYS}" "ask,default_target=${VM_KEYS}"
+    add_permission "SplitPassword" "${VM_VPN}" "${VM_KEYS}" "ask,default_target=${VM_KEYS}"
+fi
 
 message "CUSTOMISING INSTALLATION"
-if [ -x ./custom/custom.sh ] ; then
-    . ./custom/custom.sh
-fi
+[ ! -x ./custom/custom.sh ] || . ./custom/custom.sh
 message "DONE CUSTOMISING"
-
 
 message "TERMINATING ${YELLOW}${VM_CORE}"
 qvm-shutdown --quiet --wait --force "${VM_CORE}"
-
-
-# TODO: block non-tcp traffic except dns for ssh
-# TODO: openvpn provider
-# TODO: multiple profiles for ssh
-#   systemctl start myservice@"arg1 arg2 arg3".service
-#   [Service]
-#   Environment="SCRIPT_ARGS=%I"
-#   ExecStart=/tmp/test.py $SCRIPT_ARGS
-#   ExecStart=/tmp/test.py %I
-# TODO: proxy dns requests into dns-over-https (dnscrypt-proxy, ideally https-dns-proxy)
-
 
 message "DONE!"
 exit 0
