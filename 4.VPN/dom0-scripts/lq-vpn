@@ -1,0 +1,32 @@
+#!/bin/sh
+
+PROGRAM="$(basename "${0}")"
+QUBE_KEYS="core-keys"
+QUBE_VPN="core-vpn"
+
+if [ $# -lt 2 ] ; then
+    echo "Usage: ${PROGRAM} <connection-type> <connection-options>"
+    echo "Connection-type is one of:"
+    echo ""
+    echo "  ssh: ${PROGRAM} ssh username:host[:port]"
+    echo "    Connect to ssh server and use ssh socks proxy for traffic"
+    echo "    redirection. Local DNS is used for name resolution."
+    echo "    SSH keys from ${QUBE_KEYS} qube are used for authentication,"
+    echo "    password authentication is not (yet) supported."
+    echo ""
+    echo "  ssh-dns: ${PROGRAM} ssh-dns username:host[:port]"
+    echo "    Same as above but use dns-over-http for name resolution."
+    echo "    This allows name resolution to happen over ssh connection."
+    echo ""
+    echo "  ovpn: ${PROGRAM} ssh username:profile"
+    echo "    Connect to OpenVpn server. File 'profile.zip' is requested"
+    echo "    from ${QUBE_KEYS} qube, extracted and a file with '.ovpn'"
+    echo "    extension is used as connection config file."
+    echo "    Only password authentication is supported at this time,"
+    echo "    password will be requested from ${QUBE_KEYS} qube."
+    exit 1
+fi
+
+qvm-run --quiet --autostart --no-gui --no-color-output --filter-escape-chars --user root ${QUBE_VPN} "/bin/systemctl start liteqube-vpn@${1}:${2}"
+
+exit 0
