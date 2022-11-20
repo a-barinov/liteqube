@@ -101,8 +101,11 @@ This will create core-usb disposable qube and assign all sys-usb devises to it. 
 If USB_INPUT_DEVICES is set to True in the installation script (it is by default) then `/etc/qubes-rpc/qubes.Input*` files will be installed, allowing dom0 input to come from USB devices. This is a security risk, you've been warned.
 
 ### VPN
-The intent is to create a fire-and-forget qube that connects to VPN server once started and routes and acts as netvm for any connected qubes, routing all traffic through VPN.
-Only redirection of traffic through SSH connection is supported at this time, the qube is called core-vpn-ssh. This was created out of necessity as network I was on was not allowing any external udp traffic, and I wanted to have secure access to my home network. SSH keys are obtained from core-keys. Look at the `custom` dir inside installation dir, it shows how to put your ssh keys into core-keys automatically.
+The intent is to create a fire-and-forget qube that connects to VPN server once started and routes and acts as netvm for any connected qubes, routing all traffic through VPN. There are 3 vpn types currently supported:
+1. OpenVpn. Only password authentication is currently supported.
+2. Redirection of tcp traffic through SSH connection; local dns is used. Only ssh key authentication is currently supported.
+3. Redirection of tcp traffic through SSH connection; dns-over-http (DoH) is used for dns lookups. Only ssh key authentication is currently supported.
+You can initiate a connection on qube start (look at settings-qube.sh) and switch to another connection on the fly (look at lq-vpn command installed to dom0). Have a look at 'lq-addkey' command if you need to add keys to keys qube (core-keys) after installation. 
 
 ### Storage
 This creates a set of qubes that provide secure and transparent access to encrypted storage devices like usb sticks. The approach is based on 3 layers, separating device access, decryption and working with decrypted filesystem:
@@ -177,10 +180,11 @@ Credits for this instruction go to @dostisurta on github
 ### Further development
 I use the following components in my daily work, installer scripts will be made available in the coming months:
  - Mail: a couple of qubes that allow mail to be received and sent while keeping your Thunderbird (or any other mail app) offline. Instructions for this one were published [here](https://www.reddit.com/r/Qubes/comments/9q76f2/splitmail_setup/) a few years back.
- - VPN: add openvpn support
  - RDP/VNC: polish vnc support
  
 The following improvements will be made to further enhance security and stability of the setup:
+ - Create GUI qube
+ - Implement plausible deniability encryption for most sensitive data (vault and core-keys qubes)
  - Improve security of Liteqube systemd services using builtin systemd tools.
  - Use SELinux (preferred but very difficult due to lack of default profiles) or AppArmour (easier but possibly less secure) to improve security of the apps (networkmanager, tor, exim, getmail, etc) used.
  - Create minimal tray applet to monitor network, tor state and sound volume.
