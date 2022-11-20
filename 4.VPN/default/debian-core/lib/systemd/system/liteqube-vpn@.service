@@ -1,0 +1,15 @@
+[Unit]
+Description=Start VPN service that tunnels all incoming traffic
+ConditionPathExists=/usr/local/bin/liteqube-vpn
+
+
+[Service]
+Type=simple
+User=root
+Group=root
+StandardOutput=journal
+StandardError=journal
+ExecStart=/usr/local/bin/liteqube-vpn start %I
+ExecStopPost=/usr/local/bin/liteqube-vpn stop %I
+Restart=always
+RestartSec=30

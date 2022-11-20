@@ -1,0 +1,243 @@
+#!/bin/sh
+
+set -e
+#set -x
+
+DELIMITER=":"
+ENTER="
+"
+
+exit_with_error() {
+    echo "${1}" >&2
+    exit 1
+}
+
+### SSH Tunnel ###
+##################
+
+ssh_read_parameters() {
+    SSH_USER="${1%%$DELIMITER*}"
+    [ -z "${SSH_USER}" -o "${SSH_USER}" = "${1}" ] && exit_with_error "ERROR: No ssh user specified"
+    SSH_SERVER="${1#*$DELIMITER}"
+    [ -z "${SSH_SERVER}" -o "${SSH_SERVER}" = "${1}" ] && exit_with_error "ERROR: No ssh server specified"
+    SSH_PORT="${SSH_SERVER##*$DELIMITER}"
+    [ -z "${SSH_PORT}" -o "${SSH_PORT}" = "${SSH_SERVER}" ] && SSH_PORT="22"
+    SSH_SERVER="${SSH_SERVER%$DELIMITER*}"
+    SSH_COMMANDLINE="-D 127.0.0.1:1080 -o StrictHostKeyChecking=no -q -C -N -p ${SSH_PORT} ${SSH_USER}@${SSH_SERVER}"
+}
+
+ssh_start() (
+    ssh_read_parameters "${1}"
+
+    /usr/bin/qrexec-client-vm dom0 liteqube.SignalVPN+connecting
+    /bin/systemctl start liteqube-split-ssh.socket
+
+    /usr/bin/sudo -u user SSH_AUTH_SOCK=/home/user/.ssh/ssh-agent-core-keys /usr/bin/ssh ${SSH_COMMANDLINE} &
+    for SSH_DELAY in 10 10 5 5 5 5 5 3 3 3 3 3 0 ; do
+        sleep "${SSH_DELAY}"
+        /usr/bin/netstat -pntl | grep 1080 >/dev/null 2>&1 && break
+        [ "${SSH_DELAY}" = "0" ] || continue
+        /bin/ps hww -C ssh -o pid:1,args:1 | /bin/grep "${SSH_COMMANDLINE}" | /bin/cut -d' ' -f1 | /bin/xargs -r kill
+        /bin/systemctl stop liteqube-split-ssh.socket
+        /usr/bin/qrexec-client-vm dom0 liteqube.SignalVPN+disconnected
+        exit_with_error "ERROR: Failed to establish ssh connection"
+    done
+
+    /bin/systemctl stop liteqube-split-ssh.socket
+    /bin/systemctl start redsocks
+    if [ -n "${SSH_DNS}" ] ; then
+        DNS_READY_COUNT="$(journalctl -t dnscrypt-proxy | grep 'dnscrypt-proxy is ready - live servers' | wc -l)"
+        /bin/systemctl start dnscrypt-proxy
+        for TIMEOUT in 1 1 1 2 2 2 3 3 3 4 4 4 5 5 5 5 5 5 0 ; do
+            sleep "${TIMEOUT}"
+            [ "${DNS_READY_COUNT}" = "$(journalctl -t dnscrypt-proxy | grep 'dnscrypt-proxy is ready - live servers' | wc -l)" ] || break
+            [ "${TIMEOUT}" = "0" ] || continue
+            /bin/systemctl stop dnscrypt-proxy
+            /bin/systemctl stop redsocks
+            /bin/ps hww -C ssh -o pid:1,args:1 | /bin/grep "${SSH_COMMANDLINE}" | /bin/cut -d' ' -f1 | /bin/xargs -r kill
+            /usr/bin/qrexec-client-vm dom0 liteqube.SignalVPN+disconnected
+            exit_with_error "ERROR: dnscrypt-proxy is not ready after 60 seconds"
+        done
+    fi
+    /usr/bin/qrexec-client-vm dom0 liteqube.SignalVPN+connected
+
+    echo 1 > /proc/sys/net/ipv4/conf/all/route_localnet
+    echo 1 > /proc/sys/net/ipv4/conf/default/route_localnet
+    iptables -t nat -D PREROUTING -j PR-QBS || true
+    iptables -t nat -D PREROUTING -j PR-QBS-SERVICES || true
+    iptables -t nat -I PREROUTING -i vif+ -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -j DNAT --to-destination 127.0.0.1:9040
+    if [ -n "${SSH_DNS}" ] ; then
+        iptables -t nat -I PREROUTING -i vif+ -p udp -m udp --dport 53 -j DNAT --to-destination 127.0.0.1:9053
+        iptables -t nat -I PREROUTING -i vif+ -p tcp -m tcp --dport 53 -j DNAT --to-destination 127.0.0.1:9053
+    else
+        iptables -t nat -I PREROUTING -i vif+ -p udp -m udp --dport 53 -j DNAT --to-destination 10.139.1.1
+        iptables -t nat -I PREROUTING -i vif+ -p tcp -m tcp --dport 53 -j DNAT --to-destination 10.139.1.1
+        iptables -t nat -I PREROUTING -i vif+ -p udp -m udp --dport 53 -j DNAT --to-destination 10.139.1.2
+        iptables -t nat -I PREROUTING -i vif+ -p tcp -m tcp --dport 53 -j DNAT --to-destination 10.139.1.2
+    fi
+    iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+    iptables -t nat -A OUTPUT -m owner --uid-owner user -j RETURN
+    iptables -t nat -A OUTPUT -d 127.0.0.0/9 -j RETURN
+    iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 9040
+    [ -z "${SSH_DNS}" ] || iptables -t nat -A OUTPUT -p udp -m udp --dport 53 -j REDIRECT --to-ports 9053
+    iptables -I INPUT -i vif+ -p tcp -m tcp --dport 9040 -j ACCEPT
+    [ -z "${SSH_DNS}" ] && iptables -I INPUT -i vif+ -p udp -m udp --dport 53 -j ACCEPT || iptables -I INPUT -i vif+ -p udp -m udp --dport 9053 -j ACCEPT
+    iptables -I INPUT -m state --state INVALID -j DROP
+    iptables -I INPUT -m conntrack --ctstate INVALID -j DROP
+    iptables -I INPUT -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,SYN,RST,PSH,ACK,URG -j DROP
+    iptables -I INPUT -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,SYN,RST,ACK -j DROP
+    iptables -I INPUT -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j DROP
+    iptables -I INPUT -p tcp -m tcp --tcp-flags FIN,SYN FIN,SYN -j DROP
+    iptables -I INPUT -p tcp -m tcp --tcp-flags SYN,RST SYN,RST -j DROP
+    iptables -I INPUT -f -j DROP
+    iptables -I INPUT -p icmp -j DROP
+    [ -z "${SSH_DNS}" ] || iptables -I FORWARD -j REJECT --reject-with icmp-admin-prohibited
+
+    while /usr/bin/netstat -pntl | grep 1080 >/dev/null 2>&1; do
+        sleep 3;
+    done
+)
+
+ssh_stop() (
+    ssh_read_parameters "${1}"
+
+    /bin/ps hww -C ssh -o pid:1,args:1 | /bin/grep "${SSH_COMMANDLINE}" | /bin/cut -d' ' -f1 | /bin/xargs -r kill
+    /bin/systemctl stop redsocks
+    [ -z "${SSH_DNS}" ] || /bin/systemctl stop dnscrypt-proxy
+
+    echo 0 > /proc/sys/net/ipv4/conf/all/route_localnet
+    echo 0 > /proc/sys/net/ipv4/conf/default/route_localnet
+    iptables -t nat -I PREROUTING -j PR-QBS-SERVICES || true
+    iptables -t nat -I PREROUTING -j PR-QBS || true
+    iptables -t nat -D PREROUTING -i vif+ -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -j DNAT --to-destination 127.0.0.1:9040 || true
+    if [ -n "${SSH_DNS}" ] ; then
+        iptables -t nat -D PREROUTING -i vif+ -p udp -m udp --dport 53 -j DNAT --to-destination 127.0.0.1:9053 || true
+        iptables -t nat -D PREROUTING -i vif+ -p tcp -m tcp --dport 53 -j DNAT --to-destination 127.0.0.1:9053 || true
+    else
+        iptables -t nat -D PREROUTING -i vif+ -p udp -m udp --dport 53 -j DNAT --to-destination 10.139.1.1 || true
+        iptables -t nat -D PREROUTING -i vif+ -p tcp -m tcp --dport 53 -j DNAT --to-destination 10.139.1.1 || true
+        iptables -t nat -D PREROUTING -i vif+ -p udp -m udp --dport 53 -j DNAT --to-destination 10.139.1.2 || true
+        iptables -t nat -D PREROUTING -i vif+ -p tcp -m tcp --dport 53 -j DNAT --to-destination 10.139.1.2 || true
+    fi
+    iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE || true
+    iptables -t nat -D OUTPUT -m owner --uid-owner user -j RETURN || true
+    iptables -t nat -D OUTPUT -d 127.0.0.0/9 -j RETURN || true
+    iptables -t nat -D OUTPUT -p tcp -j REDIRECT --to-ports 9040 || true
+    [ -z "${SSH_DNS}" ] || iptables -t nat -D OUTPUT -p udp -m udp --dport 53 -j REDIRECT --to-ports 9053 || true
+    iptables -D INPUT -i vif+ -p tcp -m tcp --dport 9040 -j ACCEPT || true
+    [ -z "${SSH_DNS}" ] && iptables -D INPUT -i vif+ -p udp -m udp --dport 53 -j ACCEPT || iptables -D INPUT -i vif+ -p udp -m udp --dport 9053 -j ACCEPT || true
+    iptables -D INPUT -m state --state INVALID -j DROP || true
+    iptables -D INPUT -m conntrack --ctstate INVALID -j DROP || true
+    iptables -D INPUT -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,SYN,RST,PSH,ACK,URG -j DROP || true
+    iptables -D INPUT -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG FIN,SYN,RST,ACK -j DROP || true
+    iptables -D INPUT -p tcp -m tcp --tcp-flags FIN,SYN,RST,PSH,ACK,URG NONE -j DROP || true
+    iptables -D INPUT -p tcp -m tcp --tcp-flags FIN,SYN FIN,SYN -j DROP || true
+    iptables -D INPUT -p tcp -m tcp --tcp-flags SYN,RST SYN,RST -j DROP || true
+    iptables -D INPUT -f -j DROP || true
+    iptables -D INPUT -p icmp -j DROP || true
+    [ -z "${SSH_DNS}" ] || iptables -D FORWARD -j REJECT --reject-with icmp-admin-prohibited || true
+
+    /usr/bin/qrexec-client-vm dom0 liteqube.SignalVPN+disconnected
+)
+
+
+### SSH+DNS Tunnel ###
+######################
+
+ssh_dns_start() (
+    SSH_DNS="1"
+    ssh_start "${1}"
+)
+
+ssh_dns_stop() (
+    SSH_DNS="1"
+    ssh_stop "${1}"
+)
+
+
+### OpenVPN Tunnel ###
+######################
+
+ovpn_read_parameters() {
+    OVPN_USER="${1%%$DELIMITER*}"
+    [ -z "${OVPN_USER}" -o "${OVPN_USER}" = "${1}" ] && exit_with_error "ERROR: No openvpn user specified"
+    OVPN_PROFILE="${1#*$DELIMITER}"
+    [ -z "${OVPN_PROFILE}" -o "${OVPN_PROFILE}" = "${1}" ] && exit_with_error "ERROR: No openvpn profile specified"
+    return 0
+}
+
+ovpn_start() {
+    ovpn_read_parameters "${1}"
+    /usr/bin/qrexec-client-vm dom0 liteqube.SignalVPN+connecting
+
+    mkdir -p -m 0755 "/run/liteqube/ovpn"
+    qrexec-client-vm core-keys "liteqube.SplitFile+${OVPN_PROFILE}.zip" > "/run/liteqube/ovpn/${OVPN_PROFILE}.zip" || exit_with_error "ERROR: Cannot read openvpn profile ${OVPN_PROFILE}"
+    python3 -c "import shutil ; shutil.unpack_archive('/run/liteqube/ovpn/${OVPN_PROFILE}.zip', '/run/liteqube/ovpn')" || exit_with_error "ERROR: ${OVPN_PROFILE}.zip openvpn profile is broken"
+    OVPN_CONFIG="$(ls -1 /run/liteqube/ovpn | grep ".ovpn")"
+    [ -e "/run/liteqube/ovpn/${OVPN_CONFIG}" ] || exit_with_error "ERROR: Cannot find openvpn config inside ${OVPN_PROFILE}.zip"
+
+    OVPN_PASSWORD="$(/usr/bin/qrexec-client-vm core-keys liteqube.SplitPassword+"${OVPN_PROFILE}")" || true
+    [ -n "${OVPN_PASSWORD}" ] || OVPN_PASSWORD="$(/usr/bin/qrexec-client-vm dom0 liteqube.SplitPassword+"${OVPN_PROFILE}")"
+    [ -n "${OVPN_PASSWORD}" ] || exit_with_error "ERROR: Cannot proceed without password"
+
+    OVPN_READY_COUNT="$(journalctl -t openvpn | grep 'Initialization Sequence Completed' | wc -l)"
+    bash -c "exec openvpn --daemon --cd /run/liteqube/ovpn --user user --group user --persist-tun --persist-key --config '${OVPN_CONFIG}' --auth-user-pass  <(echo '${OVPN_USER}${ENTER}${OVPN_PASSWORD}')"
+    for TIMEOUT in 1 1 1 2 2 2 3 3 3 4 4 4 5 5 5 5 5 5 0 ; do
+        sleep "${TIMEOUT}"
+        [ "${OVPN_READY_COUNT}" = "$(journalctl -t openvpn | grep 'Initialization Sequence Completed' | wc -l)" ] || break
+        [ "${TIMEOUT}" = "0" ] || continue
+        killall openvpn || true
+        /usr/bin/qrexec-client-vm dom0 liteqube.SignalVPN+disconnected
+        exit_with_error "ERROR: openvpn is not ready after 60 seconds"
+    done
+    /usr/bin/qrexec-client-vm dom0 liteqube.SignalVPN+connected
+
+    iptables -t nat -D PREROUTING -j PR-QBS || true
+    iptables -t nat -D PREROUTING -j PR-QBS-SERVICES || true
+    iptables -t nat -A POSTROUTING -o tun0 -j MASQUERADE
+    iptables -t nat -A PREROUTING -i vif+ -p udp -m udp --dport 53 -j DNAT --to-destination 1.1.1.1
+    iptables -t nat -A PREROUTING -i vif+ -p tcp -m tcp --dport 53 -j DNAT --to-destination 1.1.1.1
+    iptables -t nat -A PREROUTING -i vif+ -p udp -m udp --dport 53 -j DNAT --to-destination 8.8.8.8
+    iptables -t nat -A PREROUTING -i vif+ -p tcp -m tcp --dport 53 -j DNAT --to-destination 8.8.8.8
+    iptables -A FORWARD -i tun0 -o vif+ -m state --state RELATED,ESTABLISHED -j ACCEPT
+    iptables -A FORWARD -i vif+ -o tun0 -j ACCEPT
+
+    while [ -e /proc/sys/net/ipv4/conf/tun0 ] ; do
+        sleep 3;
+    done
+}
+
+ovpn_stop() {
+    ovpn_read_parameters "${1}"
+
+    iptables -t nat -I PREROUTING -j PR-QBS
+    iptables -t nat -I PREROUTING -j PR-QBS-SERVICES
+    iptables -t nat -D POSTROUTING -o tun0 -j MASQUERADE || true
+    iptables -t nat -D PREROUTING -i vif+ -p udp -m udp --dport 53 -j DNAT --to-destination 1.1.1.1 || true
+    iptables -t nat -D PREROUTING -i vif+ -p tcp -m tcp --dport 53 -j DNAT --to-destination 1.1.1.1 || true
+    iptables -t nat -D PREROUTING -i vif+ -p udp -m udp --dport 53 -j DNAT --to-destination 8.8.8.8 || true
+    iptables -t nat -D PREROUTING -i vif+ -p tcp -m tcp --dport 53 -j DNAT --to-destination 8.8.8.8 || true
+    iptables -D FORWARD -i tun0 -o vif+ -m state --state RELATED,ESTABLISHED -j ACCEPT || true
+    iptables -D FORWARD -i vif+ -o tun0 -j ACCEPT || true
+
+    killall openvpn || true
+    rm -f /run/liteqube/ovpn/* || true
+    /usr/bin/qrexec-client-vm dom0 liteqube.SignalVPN+disconnected
+}
+
+
+### main(action, parameters) ###
+################################
+
+VPN_ACTION="${1}"
+VPN_TYPE="${2%%$DELIMITER*}"
+VPN_PARAMETERS="${2#*$DELIMITER}"
+[ -z "${VPN_ACTION}" ] && exit_with_error "ERROR: Unknown VPN action, needs to be either 'start' or 'stop'"
+[ -z "${VPN_TYPE}" ] && exit_with_error "ERROR: Unknown VPN type, shall be one of 'ssh' or 'ssh-dns'"
+[ "${VPN_TYPE}" = "ssh-dns" -o "${VPN_TYPE}" = "ssh/dns" ] && VPN_TYPE="ssh_dns"
+[ "${VPN_TYPE}" = "ssh_dns" ] && VPN_TYPE_REAL="ssh-dns" || VPN_TYPE_REAL="${VPN_TYPE}"
+type ${VPN_TYPE}_${VPN_ACTION} | /bin/grep "function" >/dev/null 2>&1 || exit_with_error "ERROR: Unsupported command ${1} for VPN type ${VPN_TYPE}"
+[ "${VPN_ACTION}" = "stop" ] || /bin/systemctl list-units --no-pager --no-legend --type=service --state=running 'liteqube-vpn@*' | grep -v "${VPN_TYPE_REAL}:${VPN_PARAMETERS}" | cut -d' ' -f3 | xargs -r /bin/systemctl stop
+${VPN_TYPE}_${VPN_ACTION} "${VPN_PARAMETERS}"
+
+exit 0

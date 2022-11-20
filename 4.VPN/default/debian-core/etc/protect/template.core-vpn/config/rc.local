@@ -1,0 +1,24 @@
+#!/bin/sh
+
+RETURN="
+"
+NS1="10.139.1.1"
+NS2="10.139.1.2"
+if [ -e /var/run/qubes/qubes-ns ] ; then
+    . /var/run/qubes/qubes-ns
+fi
+echo "nameserver ${NS1}${RETURN}nameserver ${NS2}" > /run/resolv.conf
+
+/bin/systemctl enable qubes-iptables
+/bin/systemctl start qubes-iptables
+
+/bin/systemctl enable qubes-network
+/bin/systemctl start qubes-network
+
+[ -x "/rw/config/liteqube-settings" ] && . /rw/config/liteqube-settings
+[ -n "${SSH_PORT}" ] && SSH_PORT=":${SSH_PORT}"
+[ x"${VPN_TYPE}" = x"ssh" -o x"${VPN_TYPE}" = x"ssh-dns" ] && SERVICE="${VPN_TYPE}:${SSH_USER}:${SSH_SERVER}${SSH_PORT}"
+[ x"${VPN_TYPE}" = x"ovpn" ] && SERVICE="${VPN_TYPE}:${OVPN_USER}:${OVPN_PROFILE}"
+[ -n "${SERVICE}" ] && /bin/systemctl start "liteqube-vpn@${SERVICE}"
+
+exit 0
