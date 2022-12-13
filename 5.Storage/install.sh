@@ -90,7 +90,7 @@ if [ x"${ISCSI_VM}" = x"True" ] ; then
 
     message "CONFIGURING ${YELLOW}${VM_ISCSI}"
     qvm-prefs --quiet --set "${VM_ISCSI}" maxmem 0
-    qvm-prefs --quiet --set "${VM_ISCSI}" memory 144
+    qvm-prefs --quiet --set "${VM_ISCSI}" memory 160
     qvm-prefs --quiet --set "${VM_ISCSI}" netvm "${VM_FW_NET}"
     #qvm-prefs --quiet --set "${VM_ISCSI}" guivm ''
     qvm-prefs --quiet --set "${VM_ISCSI}" audiovm ''

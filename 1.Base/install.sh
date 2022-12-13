@@ -216,7 +216,7 @@ fi
 
 message "CONFIGURING ${YELLOW}${VM_KEYS}"
 qvm-prefs --quiet --set "${VM_KEYS}" maxmem 0
-qvm-prefs --quiet --set "${VM_KEYS}" memory 128
+qvm-prefs --quiet --set "${VM_KEYS}" memory 160
 qvm-prefs --quiet --set "${VM_KEYS}" netvm ''
 #qvm-prefs --quiet --set "${VM_KEYS}" guivm ''
 qvm-prefs --quiet --set "${VM_KEYS}" audiovm ''

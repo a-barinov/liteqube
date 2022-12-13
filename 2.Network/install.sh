@@ -12,7 +12,7 @@ FIRMWARE_PACKAGES="firmware-iwlwifi"
 
 # Net vm memory in Mb. Default works fine for intel drivers but you may need to allocate
 # more memory if net qube crashes or hangs on start.
-NET_VM_MEMORY="208"
+NET_VM_MEMORY="240"
 
 # Set to "True" to not require PCI device reset
 NET_NO_STRICT_RESET="True"
@@ -77,7 +77,7 @@ if [ x"${USE_MIRAGE}" = x"True" ] ; then  # Mirage firewall
     qvm-prefs --quiet --set "${VM_FW_BASE}" label "${COLOR_TEMPLATE}"
     qvm-prefs --quiet --set "${VM_FW_BASE}" kernel mirage-firewall
     qvm-prefs --quiet --set "${VM_FW_BASE}" maxmem 0
-    qvm-prefs --quiet --set "${VM_FW_BASE}" memory 32
+    qvm-prefs --quiet --set "${VM_FW_BASE}" memory 64
     qvm-prefs --quiet --set "${VM_FW_BASE}" vcpus 1
     qvm-prefs --quiet --set "${VM_FW_BASE}" virt_mode pvh
     VM_LVM="${VM_FW_BASE//-/--}"
@@ -96,7 +96,7 @@ if [ x"${USE_MIRAGE}" = x"True" ] ; then  # Mirage firewall
     message "CONFIGURING ${YELLOW}${VM_FW_DVM}"
     qvm-prefs --quiet --set "${VM_FW_DVM}" label "${COLOR_WORKERS}"
     qvm-prefs --quiet --set "${VM_FW_DVM}" maxmem 0
-    qvm-prefs --quiet --set "${VM_FW_DVM}" memory 32
+    qvm-prefs --quiet --set "${VM_FW_DVM}" memory 64
     qvm-prefs --quiet --set "${VM_FW_DVM}" vcpus 1
     qvm-prefs --quiet --set "${VM_FW_DVM}" template_for_dispvms True
     qvm-prefs --quiet --set "${VM_FW_DVM}" virt_mode pvh
@@ -523,7 +523,7 @@ qvm-shutdown --quiet --wait --force "${VM_NET}"
 qvm-prefs --quiet --set "${VM_FW_NET}" memory 128
 qvm-prefs --quiet --set "${VM_FW_TOR}" memory 128
 qvm-prefs --quiet --set "${VM_NET}" memory "${NET_VM_MEMORY}"
-qvm-prefs --quiet --set "${VM_TOR}" memory 160
+qvm-prefs --quiet --set "${VM_TOR}" memory 176
 qvm-start --quiet --skip-if-running "${VM_NET}"
 
 

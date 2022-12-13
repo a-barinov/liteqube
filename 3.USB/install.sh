@@ -45,7 +45,7 @@ fi
 
 message "CONFIGURING ${YELLOW}${VM_USB}"
 qvm-prefs --quiet --set "${VM_USB}" maxmem 0
-qvm-prefs --quiet --set "${VM_USB}" memory 176
+qvm-prefs --quiet --set "${VM_USB}" memory 208
 qvm-prefs --quiet --set "${VM_USB}" netvm ''
 #qvm-prefs --quiet --set "${VM_USB}" guivm ''
 qvm-prefs --quiet --set "${VM_USB}" audiovm ''
