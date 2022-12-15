@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Input and output sound volume in the range of 5-100.
-INITIAL_INPUT_VOLUME="50"
+INITIAL_INPUT_VOLUME="100"
 INITIAL_OUTPUT_VOLUME="50"
 
 # Non-empty variables will unmute mic/sound on qube start.

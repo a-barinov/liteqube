@@ -1,0 +1,25 @@
+#!/bin/sh
+
+MIC="dom0:mic"
+RETURN="
+"
+
+SHARED_WITH="$(qvm-device mic | grep "${MIC}" | cut -c23-255)"
+
+if [ -n "${SHARED_WITH}" ] ; then
+    dialog --keep-tite --title "Microphone" --yesno "${RETURN}Stop sharing with ${SHARED_WITH}?" 7 40 && qvm-device mic d "${SHARED_WITH}" "${MIC}"
+else
+    for QUBE in $(cat /etc/qubes-rpc/policy/admin.Events | grep "core-sound" | cut -d' ' -f2) ; do
+        if [ -e "/run/qubes/qubesdb.${QUBE}.pid" ] ; then
+            ITEMS="${ITEMS} ${QUBE} >"
+        fi
+    done
+    if [ -n "${ITEMS}" ] ; then
+        SELECTION=$(dialog --keep-tite --title "Microphone" --menu "Share microphone with" 0 0 0 $ITEMS 3>&1 1>&2 2>&3 3>&-)
+        [ -e "/run/qubes/qubesdb.${SELECTION}.pid" ] && qvm-device mic a "${SELECTION}" "${MIC}"
+    else
+       dialog  --keep-tite --title "Microphone" --msgbox "${RETURN}No qubes available to share mic with" 8 30
+    fi
+fi
+
+exit 0

@@ -37,6 +37,7 @@ for VM in ${QUBES_WITH_SOUND} ; do
     vm_exists "${VM}" && qvm-prefs "${VM}" audiovm "${VM_AUDIO}"
 done
 dom0_install_command lq-volume
+dom0_install_command lq-mic
 
 
 message "ATTACHING AUDIO DEVICES TO ${YELLOW}${VM_AUDIO}"
@@ -55,9 +56,7 @@ fi
 
 message "TERMINATING ${YELLOW}${VM_CORE}"
 qvm-shutdown --quiet --wait --force "${VM_CORE}"
-
-
-#TODO: Mic sharing support
+qvm-start --quiet --skip-if-running "${VM_AUDIO}"
 
 
 message "DONE!"
