@@ -127,6 +127,13 @@ Creates printing qube called core-print. This qube has two modes of operation, w
  - With preview enabled, any file sent to print qube will be opened in pdf previewer (zathura-pdf-poppler by default), you can then print it from there to any installed printer and with any options.
 In addition to creating core-print qube, setup script can create "Qubes Printer" for selected qubes, that is based on cups-pdf. You can then print to this printer, and resulting pdf will be sent to core-print automatically. In case you don't enable print file preview, this creates almost seamless printing experience with printer shared across multiple qubes.
 
+### Mail
+Liteqube mail setup assumes you have offline qube with mail reader (e.g. Thunderbird) that uses two separate qubes, core-getmail and core-sendmail to receive and sent mail; getmail and msmtp are used for this. Installer will create needed configs for you, and you can tweak those later if desired. Getmail configs are in core-getmail qube in `/home/user/getmail` dir; with one dir per account and `getmailrc`config file in each folder. Please note that default config assumes deleting received mail from server. Msmtp config is located in `/etc/protect/template.core-sendmail/home/user/.msmtprc.`in debian-core qube.
+
+Since some mail readers (e.g. Thunderbird) cannot use command line to receive and send mail, a small adapter is created, that emulates pop3 and smtp server on ports 1110 and 1025 respectively. The adapter is put into `/home/user/.mail` folder in your mail qube. To use it, run Thunderbird through it (`~/.mail/lq-mailer thunderbird`) and create an account that receives mail via pop3 on localhost:1110 (you can use any username and password) and sends mail through localhost:1025 {Connection security: None, Authentication method: No authentication}.
+
+To automatically check mail every 30 minutes (configurable), a systemd user service can be created in dom0.
+
 ### Templating mechanism
 This is the key service allowing Liteqube to run different disposable qubes off the same template. It runs very early on boot and checks private partition to ensure it contains only the files needed. Any file not fitting the configuration is put into quarantine or deleted.
 Setup is driven by `/etc/protect` folder that has 4 components:
@@ -136,11 +143,13 @@ Setup is driven by `/etc/protect` folder that has 4 components:
  - In case you need to ignore a file, it shall be put into `whitelist.<vm name>`. To ignore all files or all dirs in a certain dir, put `.any_file` or `.any_dir` file into a dir.
 
 ### Using 'core-keys' for key or password storage
-As of Liteqube 0.91, core-keys supports providing files, passwords and ssh keys to other qubes on request.
-- Files: You need to save a file under `/home/user/<qube name>/<filename>`, this file can then be requested only by that qube through `liteqube.SplitFile` service. Don't forget that this file needs to be added to `/etc/protect` dir (either as checksum or whitelist) otherwise it will be quarantined during the next boot.
-- Passwords: `/home/user` dir contains `password-<qube name>` scripts, receiving token (e.g. username) as command line option and printing password to stdout. It is called by `liteqube.SplitPassword` service that can be used by other qubes for password provisioning. If there is no password present in core-keys, a qube can call `liteqube.SplitPassword` in dom0, you will then be prompted for password and also prompted if it shall be saved into core-keys. Have a look at core-decrypt or core-rdp scripts to see how this works.
-- SSH keys: this is based on ability of ssh-agent to run on a different machine. You store your ssh keys in core-keys in `/home/user/.ssh` as you would do normally. In a qube that needs to use these keys you should start `liteqube-split-ssh.socket` and you should *not* start local ssh-agent. Have a look at core-vpn-ssh scripts to see how this works. 
-- GPG support: similar to ssh-agent, this is based on gpg-agent being able to work over network. Done in preparation for mail qubes integration.
+As of Liteqube 0.93, core-keys supports providing files, passwords, ssh and gpg keys (collectively called key material) to other qubes on request. You can use `lq-addkey` command in dom0 to put key material into core-keys qube. This script provides instructions on how to retrieve key material in the qube that needs to use it.
+Here are some details on the underlying setup in case you want to do some customisations:
+
+- **Files**: In core-keys, you need to save a file under `/home/user/<qube name>/<filename>`, this file can then be requested only by that qube through `liteqube.SplitFile` service. Don't forget that this file needs to be added to `/etc/protect` dir (either as checksum or whitelist) otherwise it will be quarantined during the next core-keys start.
+- **Passwords**: `/home/user` dir contains `password-<qube name>` scripts, receiving token (e.g. username) as command line option and printing password to stdout. It is called by `liteqube.SplitPassword` service that can be used by other qubes for password provisioning. If there is no password present in core-keys, a it will call `liteqube.SplitPassword` in dom0, you will then be prompted for password and also prompted if it shall be saved into core-keys.
+- **SSH keys**: this is based on ability of ssh to use ssh-agent over a socket that can be passed from a different qube. You store your ssh keys in core-keys in `/home/user/.ssh` as you would do normally. In a qube that needs to use these keys you should start `liteqube-split-ssh.socket` and you should *not* start local ssh-agent.
+- **GPG keys**: similar to ssh-agent, this is based on gpg-agent being able to work over socket passed from another qube. This setup assumes your master key is located in vault and you use subkey of that key for email encryption and signing. Add your private and public subkeys to gpg in core-keys qube, and add your public key to a qube that needs to use private subkey securely. In that qube you should start `liteqube-split-gpg.socket` and you should *not* start local gpg-agent.
 
 ### Using Tor Browser with 'core-tor'
 1. Create an AppVM for Tor Browser
@@ -177,17 +186,39 @@ As of Liteqube 0.91, core-keys supports providing files, passwords and ssh keys 
 
 Credits for this instruction go to @dostisurta on github
 
+### Using Thunderbird with split-gpg
+Since version 78, Thunderbird uses built-in PGP implementation that does not work with split gpg. Here are the steps needed switch to using external gpg binary, assuming you already imported your gpg keys into core-keys and Thunderbird qubes:
+1. Go to the Thunderbird preferences. In the "General" section you will find config editor at the bottom of the page.
+2. Search for the 'mail.openpgp.allow_external_gnupg' key. Double click it in order to set it to true.
+3. Find key id by running `gpg --list-secret-keys --keyid-format long`The output will look similar to this, with key id being FEDCBA9876543210 in the last line:
+```
+    sec#  rsa4096/0123456789ABCDEF 2023-01-01 [C]
+          0123456789ABCDEF0123456789ABCDEF01234567
+    uid                 [ unknown] Your Name <your.name@mailserver.com>
+    ssb   rsa4096/FEDCBA9876543210 2023-01-01 [SE] [expires: 2026-01-01]
+```
+4. Tell Thunderbird to use your private key for a specific account: open account settings, go the the End-To-End Encryption section and under the section OpenPGP click Add Key;  Select External GnuPG key and enter key id from the previous step.
+5. Export your public key by running `gpg --armor --export <key id>! > <filename>`
+6. Import your public key: go to Tools->OpenPGP Key Manager, click on File->Import Public Key(s) from file and select the previously exported GPG key.
+7. If you have additional identities and want to enable GPG encryption for those you can go to Account Settings->Main page->Manage Identities (at the bottom)->Add. Once identity is saved, edit it, go to the End-To-End Encryption Tab and set your key repeating steps 3-6 above.
+8. In Account Settings->End-To-End Encryption set your default encrypt/sign settings
+9. Restart Thunderbird and send a test email to check your new setup.
+
 ### Further development
-I use the following components in my daily work, installer scripts will be made available in the coming months:
- - Mail: a couple of qubes that allow mail to be received and sent while keeping your Thunderbird (or any other mail app) offline. Instructions for this one were published [here](https://www.reddit.com/r/Qubes/comments/9q76f2/splitmail_setup/) a few years back.
+The only bit to add before 1.0 release is tray applet providing user-friendly access to liteqube functionality.
+
+The following components will be added after 1.0 release:
+
  - RDP/VNC: polish vnc support
+ - USB: add bluetooth support
+ - Dispvm core-net: suggest saving new WiFi accesspoints 
+ - Base: add plausible deniability support for luks password, core-keys and vault qubes
+ - Base: add secure boot support and ability to store luks key on TPM chip
+ - GUI: create core-gui qube that works with video card directly
  
-The following improvements will be made to further enhance security and stability of the setup:
- - Create GUI qube
- - Implement plausible deniability encryption for most sensitive data (vault and core-keys qubes)
+The following improvements can be made to further enhance security, stability and performance of the setup, but are currently not a priority:
  - Improve security of Liteqube systemd services using builtin systemd tools.
  - Use SELinux (preferred but very difficult due to lack of default profiles) or AppArmour (easier but possibly less secure) to improve security of the apps (networkmanager, tor, exim, getmail, etc) used.
- - Create minimal tray applet to monitor network, tor state and sound volume.
  - Add accelerated (see #[130](https://github.com/mirage/qubes-mirage-firewall/issues/130)) mirage firewall.
  - Move from shell scripts to Salt. Liteqube for Qubes 4.1 was started as a set of salt scripts but I switched to pure shell once I realised I spend more time fighting with salt formulas than improving Liteqube.
 
@@ -205,3 +236,10 @@ The following improvements will be made to further enhance security and stabilit
  - Added printing support
  - Added mirage firewall working on Qubes 4.1, switched to mirage firewall by default
  - Fixed empty folders not pulled into git repo, ruining the installation
+
+01 January 2023, version 0.93:
+ - Added mail qubes support
+ - Complete functionality (files, passwords, ssh and gpg keys) for core-keys, lq-addkey script to make it easy for the users
+ - Improved vpn to support OpenVPN, DNS-over-HTTP and on-the-fly connection switch
+ - Added mic sharing for audio qube
+ - Adjusted memory allocation for Qubes 4.1
