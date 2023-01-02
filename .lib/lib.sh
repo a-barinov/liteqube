@@ -81,8 +81,11 @@ vm_create()
             dispvm)
                 qvm-create --class DispVM --template "${VM_DVM}" --label "${COLOR_WORKERS}" "${_VMC_VM}"
                 ;;
+            appvm)
+                qvm-create --class AppVM --template "${VM_CORE}" --label "${COLOR_WORKERS}" "${_VMC_VM}"
+                ;;
             *)
-                message "ERROR: UNKNOWN VM TYPE ${YELLOW}${_VMC_TYPE}${PREFIX} FOR ${YELLOW}${_VMC_VM}${PREFIX}"
+                message "ERROR: UNKNOWN VM TYPE ${YELLOW}${_TYPE}${PREFIX} FOR ${YELLOW}${_VMC_VM}${PREFIX}"
                 exit 1
                 ;;
         esac
@@ -101,6 +104,24 @@ vm_configure()
     #qvm-prefs --quiet --set "${_VM}" guivm "${5}"
     qvm-prefs --quiet --set "${_VM}" audiovm ''
     qvm-prefs --quiet --set "${_VM}" vcpus 1
+}
+
+vm_resize_private()
+{
+    _VRP_VM="${1}"
+    _VRP_SIZE="${2}"
+    _VRP_POOL="$(qvm-volume info "${_VRP_VM}:private" | grep '^pool ' | cut -c20-)"
+    _VRP_DRIVER="$(qvm-pool info "${_VRP_POOL}" | grep '^driver ' | cut -c20-)"
+
+    if [ x"${_VRP_DRIVER}" = x"lvm_thin" ] ; then
+        message "RESIZING PRIVATE FILESYSTEM OF ${YELLOW}${_VRP_VM}"
+        _VRP_PREFIX="$(qvm-volume info ${_VRP_VM}:private | grep ^vid | cut -c20- | cut -d/ -f1)"
+        _VM_LVM="${_VRP_PREFIX}-${_VRP_POOL}--${_VRP_VM//-/--}--private"
+        qvm-shutdown --quiet --wait --force "${_VRP_VM}"
+        sudo e2fsck -fy "/dev/mapper/${_VRP_VM}"
+        sudo resize2fs "/dev/mapper/${_VRP_VM}" $(( ${_VRP_SIZE}-200 ))M
+        sudo lvresize -y -f "/dev/mapper/${_VRP_VM}" -L ${_VRP_SIZE}M || true
+    fi
 }
 
 vm_fail_if_missing()
@@ -240,11 +261,10 @@ dom0_install_command()
     _DIC_FILE="${1}"
 
     [ -d ~/bin ] || mkdir ~/bin
-    cp "./files/${_DIC_FILE}" ~/bin
     [ ! -e "./dom0-scripts/${_DIC_FILE}" ] || cp "./dom0-scripts/${_DIC_FILE}" ~/bin
     #TODO remove once all installers are upgraded
     [ ! -e "./files/${_DIC_FILE}" ] || cp "./files/${_DIC_FILE}" ~/bin
-    chmod +x "~/bin/${_DIC_FILE}"
+    chmod 0755 ~/bin/"${_DIC_FILE}"
 }
 
 file_to_vm()
