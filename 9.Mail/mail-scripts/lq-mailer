@@ -1,0 +1,201 @@
+#!/usr/bin/python3
+
+'''
+Liteqube mailer
+Copyright (C) 2022 Alexander Barinov
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+
+# Address to listen on
+ADDRESS = '127.0.0.1'
+
+# POP3 port to listen on
+POP3_PORT = 1110
+
+# SMTP port to listen on
+SMTP_PORT = 1025
+
+# Command to obtain mbox file with new mail
+RECEIVE_COMMAND = ['qrexec-client-vm', 'core-getmail', 'liteqube.MailRead']
+
+# Command to pipe message to in order to send it
+SEND_COMMAND = ['qrexec-client-vm', 'core-sendmail', 'liteqube.MailSend']
+
+# Timeout for send and receive commands
+TIMEOUT = 120
+
+# Maildir to store received mail in
+RECEIVE_DIR = '/home/user/.mail/maildir'
+
+
+import asyncore
+import mailbox
+import os
+import os.path
+import smtpd
+import socketserver
+import subprocess
+import sys
+import threading
+
+
+def thread_mailer(command):
+    try:
+        subprocess.run(command)
+    except:
+        print('ERROR: Failed to run mailer, terminating', file=sys.stderr)
+        sys.exit(1)
+
+
+def thread_smtp(host, port):
+    class SMTP(smtpd.SMTPServer):
+        def process_message(self, peer, sender, recipients, message, **kwargs):
+            try:
+                result = subprocess.run(SEND_COMMAND, input = message, timeout = TIMEOUT).returncode
+                return None if result == 0 else '554 Temporary failure sending mail'
+            except:
+                print('ERROR: Sending mail failed', file=sys.stderr)
+                return '554 Temporary failure sending mail'
+
+    SMTP((host, port), None)
+    asyncore.loop()
+
+
+def thread_receiver(maildir_path):
+    mailbox_path = os.path.join(maildir_path, '../mailbox.mbox')
+    for subdir in ['.', 'tmp', 'new', 'cur']:
+        if not os.path.isdir(os.path.join(maildir_path, subdir)):
+            os.mkdir(os.path.abspath(os.path.join(maildir_path, subdir)), mode=0o750)
+    try:
+        with open(mailbox_path, 'ab+', 0o640) as mbox:
+            subprocess.run(RECEIVE_COMMAND, stdout = mbox, timeout = TIMEOUT)
+    except:
+        print('ERROR: Getting mail failed', file=sys.stderr)
+    try:
+        mbox = mailbox.mbox(path = mailbox_path)
+        mbox.lock()
+        maildir = mailbox.Maildir(maildir_path)
+        maildir.lock()
+        for key, message in mbox.items():
+            maildir.add(message)
+        mbox.clear()
+    except:
+        print('ERROR: Storing mail failed', file=sys.stderr)
+    finally:
+        for store in ['mbox', 'maildir']:
+            try:
+                locals()[store].flush()
+                locals()[store].unlock()
+                locals()[store].close()
+            except:
+                print('ERROR: Closing {} failed'.format(store), file=sys.stderr)
+
+
+def thread_pop3(host, port):
+    class MyTCPHandler(socketserver.BaseRequestHandler):
+        def message_list(self, message_list, what):
+            self.request.sendall('+OK {} messages ({} octets)\r\n'.format(len(message_list), sum({message_list[key]['size'] for key in message_list.keys()})).encode())
+            for index in range(len(message_list)):
+                self.request.sendall('{} {}\r\n'.format(index + 1, message_list[index + 1][what]).encode())
+            self.request.sendall(b'.\r\n')
+
+        def handle(self):
+            if not hasattr(self.server, 'receiver') or not self.server.receiver.is_alive():
+                self.server.receiver = threading.Thread(name = 'receiver', target = thread_receiver, args = (RECEIVE_DIR, ))
+                self.server.receiver.start()
+            self.request.sendall(b'+OK lq-mailer pop3 server ready\r\n')
+            while True:
+                data = self.request.recv(1024).decode('ascii')
+                command = data[0:4].strip()
+                parameter = data[5:].strip()
+                if command == 'AUTH':
+                    if parameter == '':
+                        self.request.sendall(b'+OK\r\nPLAIN\r\nUIDL\r\n.\r\n')
+                    elif parameter == 'PLAIN':
+                        try:
+                            self.request.sendall(b'+\r\n')
+                            self.request.recv(1024)
+                            if hasattr(self.server, 'receiver') and self.server.receiver.is_alive():
+                                self.server.receiver.join()
+                            maildir = mailbox.Maildir(RECEIVE_DIR)
+                            maildir.lock()
+                            message_list = {index + 1: {'key': key, 'size': len(maildir.get(key).as_bytes())} for index, key in enumerate(maildir.keys())}
+                            self.request.sendall(b'+OK Logged in.\r\n')
+                        except:
+                            self.request.sendall(b'-ERR Cannot access mailbox\r\n')
+                    else:
+                        self.request.sendall(b'-ERR Unknown authentication method\r\n')
+                elif command == 'CAPA':
+                    self.request.sendall(b'+OK Capability list follows\r\nUSER\r\n.\r\n')
+                elif command == 'USER':
+                    self.request.sendall(b'+OK\r\n')
+                elif command == 'PASS':
+                    if hasattr(self.server, 'receiver') and self.server.receiver.is_alive():
+                        self.server.receiver.join()
+                    maildir = mailbox.Maildir(RECEIVE_DIR)
+                    maildir.lock()
+                    message_list = {index + 1: {'key': key, 'size': len(maildir.get(key).as_bytes())} for index, key in enumerate(maildir.keys())}
+                    self.request.sendall(b'+OK Logged in.\r\n')
+                elif command == 'STAT':
+                    self.request.sendall('+OK {} {}\r\n'.format(len(message_list), sum({message_list[key]['size'] for key in message_list.keys()})).encode())
+                elif command == 'LIST':
+                    self.message_list(message_list, 'size')
+                elif command == 'UIDL':
+                    self.message_list(message_list, 'key')
+                elif command == 'RETR':
+                    self.request.sendall('+OK {} octets\r\n'.format(message_list[int(parameter)]['size']).encode() +
+                        maildir.get(message_list[int(parameter)]['key']).as_bytes() + b'\r\n.\r\n')
+                elif command == 'DELE':
+                    try:
+                        message_list[int(parameter)]['delete'] = True
+                        self.request.sendall('+OK message {} deleted\r\n'.format(parameter).encode())
+                    except:
+                        self.request.sendall(b'-ERR Cannot delete message\r\n')
+                elif command == 'NOOP':
+                    self.request.sendall(b'+OK\r\n')
+                elif command == 'QUIT':
+                    try:
+                        for index in message_list:
+                            if 'delete' in message_list[index]:
+                                maildir.discard(message_list[index]['key'])
+                        self.request.sendall(b'+OK lq-mailer farewell\r\n')
+                    except:
+                        self.request.sendall(b'-ERR Cannot delete messages on exit\r\n')
+                else:
+                    try:
+                        self.request.sendall(b'-ERR unknown command\r\n')
+                    except:
+                        break
+            if 'maildir' in locals():
+                maildir.unlock()
+                maildir.flush()
+                maildir.close()
+
+    socketserver.TCPServer((host, port), MyTCPHandler).serve_forever()
+
+
+def main(params):
+    if len(params) < 2:
+        print('Usage: {} <mail-reader-command>'.format(os.path.basename(params[0],)), file=sys.stderr)
+        sys.exit(1)
+
+    threading.Thread(name = 'pop3', target = thread_pop3, args = (ADDRESS, POP3_PORT), daemon = True).start()
+    threading.Thread(name = 'smtp', target = thread_smtp, args = (ADDRESS, SMTP_PORT), daemon = True).start()
+    threading.Thread(name = 'mailer', target = thread_mailer, args = (params[1:])).start()
+
+
+if __name__ == '__main__':
+    main(sys.argv)

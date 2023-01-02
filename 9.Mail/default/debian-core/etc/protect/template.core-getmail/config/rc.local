@@ -1,0 +1,20 @@
+#!/bin/sh
+
+NS1="10.139.1.1"
+NS2="10.139.1.2"
+[ -e /var/run/qubes/qubes-ns ] && . /var/run/qubes/qubes-ns
+echo "nameserver ${NS1}
+nameserver ${NS2}" > /run/resolv.conf
+
+/bin/systemctl enable qubes-iptables
+/bin/systemctl start qubes-iptables
+
+/bin/systemctl enable qubes-network
+/bin/systemctl start qubes-network
+
+/sbin/fstrim --quiet /rw
+
+# Avoid getting stuck
+/sbin/shutdown +10
+
+exit 0

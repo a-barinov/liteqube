@@ -1,0 +1,10 @@
+[Unit]
+Description=Run mail check every XXX seconds
+
+[Service]
+Restart=always
+RestartSec=XXX
+ExecStart=%h/bin/lq-mail check
+
+[Install]
+WantedBy=basic.target

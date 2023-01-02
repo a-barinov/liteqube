@@ -1,0 +1,21 @@
+#!/bin/sh
+
+case "${1}" in
+
+    receive)
+        qvm-run --no-gui --user root --service core-getmail liteqube.MailReceive
+        ;;
+
+    *)
+        PROGRAM="$(basename ${0})"
+        echo "Usage: ${PROGRAM} <receive>"
+        echo "Receive mail in core-getmail"
+        ;;
+esac
+
+exit 0
+
+# TODO
+# list
+# add receive
+# add send

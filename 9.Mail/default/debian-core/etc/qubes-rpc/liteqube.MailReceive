@@ -1,0 +1,74 @@
+#!/bin/sh
+
+
+GETMAIL_DIR="/home/user/getmail"
+RETURN="
+"
+
+[ -d "${GETMAIL_DIR}" ] || exit 1
+
+{
+    if ! /usr/bin/flock --exclusive --nonblock 7 ; then
+        /usr/bin/qrexec-client-vm dom0 "liteqube.Error+Receiving mail locked out"
+        exit 1
+    fi
+
+    for ACCOUNT in $(ls "${GETMAIL_DIR}" -1) ; do
+        [ -d "${GETMAIL_DIR}/${ACCOUNT}" -o -f "${GETMAIL_DIR}/${ACCOUNT}/getmailrc" ] || continue
+        if ! [ -e "${GETMAIL_DIR}/${ACCOUNT}/mailbox.mbox" ] ; then
+            touch "${GETMAIL_DIR}/${ACCOUNT}/mailbox.mbox"
+            chown user:user "${GETMAIL_DIR}/${ACCOUNT}/mailbox.mbox"
+            chmod 0600 "${GETMAIL_DIR}/${ACCOUNT}/mailbox.mbox"
+        fi
+
+        /usr/bin/qrexec-client-vm dom0 "liteqube.SignalMail+${ACCOUNT}_RCV"
+        PASSWORD="$(/usr/bin/qrexec-client-vm core-keys liteqube.SplitPassword+${ACCOUNT})"
+        echo "${PASSWORD}" | \
+        /bin/systemd-run \
+            --system --no-ask-password --quiet --wait --collect --pty --pipe \
+            --unit="getmail-${ACCOUNT}" --description="Get mail from ${ACCOUNT}" \
+            --property="Type=oneshot" \
+            --property="User=user" \
+            --property="Group=user" \
+            --property="StandardInput=tty" \
+            --property="StandardOutput=tty" \
+            --property="PrivateTmp=true" \
+            --property="PrivateMounts=yes" \
+            --property="PrivateDevices=true" \
+            --property="PrivateUsers=true" \
+            --property="ProtectKernelTunables=true" \
+            --property="ProtectKernelModules=true" \
+            --property="ProtectKernelLogs=true" \
+            --property="ProtectClock=true" \
+            --property="ProtectHostname=true" \
+            --property="ProtectControlGroups=true" \
+            --property="ProtectSystem=strict" \
+            --property="ProtectHome=read-only" \
+            --property="BindPaths=${GETMAIL_DIR}/${ACCOUNT}:${GETMAIL_DIR}:rbind" \
+            --property="ReadWriteDirectories=${GETMAIL_DIR}" \
+            --property="NoNewPrivileges=true" \
+            --property="MemoryDenyWriteExecute=true" \
+            --property="RestrictRealtime=true" \
+            --property="LockPersonality=yes" \
+            --property="RestrictSUIDSGID=true" \
+            --property="RemoveIPC=true" \
+            --property="KeyringMode=private" \
+            --property="RestrictNamespaces=~cgroup ipc mnt pid user uts" \
+            --property="RestrictAddressFamilies=AF_INET" \
+            --property="CapabilityBoundingSet=" \
+            --property="SystemCallFilter=@system-service" \
+            /usr/bin/getmail --getmaildir="${GETMAIL_DIR}" --rcfile="${GETMAIL_DIR}/getmailrc"
+
+        [ "$?" = "0" ] && /usr/bin/qrexec-client-vm dom0 "liteqube.SignalMail+${ACCOUNT}_OK" || /usr/bin/qrexec-client-vm dom0 "liteqube.SignalMail+${ACCOUNT}_ERR"
+        /usr/bin/qrexec-client-vm dom0 "liteqube.SignalMail+${ACCOUNT}_CNT_$(grep -c "^From " < "${GETMAIL_DIR}/${ACCOUNT}/mailbox.mbox")"
+
+    done
+
+    /sbin/shutdown now 1>/dev/null 2>&1
+
+} 7>/tmp/test
+
+exit 0
+
+# TODO: provide password via environment var once systemd in Debian supports it
+# --system --no-ask-password --quiet --wait --collect --pty --pipe --setenv=PASSWORD

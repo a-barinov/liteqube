@@ -1,0 +1,336 @@
+#!/bin/sh
+
+set -x
+
+KEYS_QUBE="core-keys"
+ENTER="
+"
+
+addkey_help() {
+    PROGRAM="$(basename ${0})"
+    echo "${PROGRAM}: add key material to core-keys for usage by other qubes"
+    echo "Usage: ${PROGRAM} <key-type> <target-qube> <parameters>"
+    echo ""
+    echo "Key type can be one of:"
+    echo ""
+    echo "  file: ${PROGRAM} file <target-qube> <source-qube>:<file-path>"
+    echo "    Take file from file-path in source-qube and install it into"
+    echo "    ${KEYS_QUBE}. It can be retrieved in target-qube by running"
+    echo "    'qrexec-client-vm ${KEYS_QUBE} liteqube.SplitFile+<filename>'"
+    echo ""
+    echo "  password: ${PROGRAM} password <target-qube> <id>"
+    echo "    Read password from stdin and install it into ${KEYS_QUBE}. It can"
+    echo "    be retrieved in target-qube by running"
+    echo "    'qrexec-client-vm ${KEYS_QUBE} liteqube.SplitPassword+<id>'"
+    echo ""
+    echo "  ssh: ${PROGRAM} ssh <target-qube> <source-qube>:</path/to/id_rsa[.pub]>"
+    echo "    Install RSA public or private keys into ${KEYS_QUBE}."
+    echo "    You can then use these keys from another qube by first running"
+    echo "    'systemctl start liteqube-split-ssh.socket'"
+    echo "    'export SSH_AUTH_SOCK=/home/user/.ssh/ssh-agent-core-keys'"
+    echo "    and then running ssh normally."
+    echo ""
+    echo "  gpg: ${PROGRAM} gpg <taret-qube> <vault-qube>:<key-id>"
+    echo "    Install gpg key to ${KEYS_QUBE}"
+    echo "    You can then use this keys from target qube by first running"
+    echo "    'systemctl start liteqube-split-gpg.socket'"
+    echo "    'export SSH_AUTH_SOCK=/home/user/.ssh/ssh-agent-core-keys'"
+    echo "    and then running gpg normally."
+    exit 1
+}
+
+exit_with_error() {
+    [ -z "${SOURCE_QUBE_RUNNING}" ] || qvm-shutdown --quiet --wait --force "${SOURCE_QUBE}"
+    [ -z "${TEMPLATE_RUNNING}" ] || qvm-shutdown --quiet --wait --force "${KEYS_QUBE_TEMPLATE}"
+    [ -z "${TARGET_TEMPLATE_RUNNING}" ] || qvm-shutdown --quiet --wait --force "${TARGET_QUBE_TEMPLATE}"
+    echo "${1}" >&2
+    exit 1
+}
+
+read_password() {
+    _RP_MESSAGE="${1}"
+    _RP_VAR="${2}"
+
+    echo -n "${_RP_MESSAGE}"
+    stty -icanon -echo
+    _RP_CHAR=" "
+    _RP_PASSWORD=
+    until [ -z "${_RP_CHAR}" ] ; do
+        _RP_CHAR="$(dd bs=1 count=1 2>/dev/null)"
+        if [ -n "${_RP_CHAR}" ] ; then
+            echo -n "*"
+            _RP_PASSWORD="${_RP_PASSWORD}${_RP_CHAR}"
+        fi
+    done
+    stty icanon -echo
+    echo
+    eval "${_RP_VAR}='${_RP_PASSWORD}'"
+}
+
+check_policy() {
+    _CP_POLICY="${1}"
+    _CP_SUBJECT="${2}"
+
+    if ! cat "/etc/qubes-rpc/policy/liteqube.${_CP_POLICY}" | grep "${TARGET_QUBE}[[:space:]]${KEYS_QUBE}" >/dev/null 2>&1 ; then
+        echo "WARNING: ${TARGET_QUBE} does not have permission to request ${_CP_SUBJECT} from ${KEYS_QUBE}"
+        echo -n "Do you want to add policy to allow this? (N/y): "
+        read INPUT
+        [ x"$INPUT" != x"y" ] || sudo /bin/sh -c "echo '${TARGET_QUBE} ${KEYS_QUBE} ask,default_target=${KEYS_QUBE}' >> /etc/qubes-rpc/policy/liteqube.${_CP_POLICY}"
+    fi
+}
+
+checksum() {
+    _CS_QUBE="${1}"
+    _CS_FILE="${2}"
+
+    _CS_SHA256="$(qrexec-client -t -T -d "${_CS_QUBE}" user:"sha256sum -b "${_CS_FILE}" | cut -d' ' -f1")"
+    _CS_SHA512="$(qrexec-client -t -T -d "${_CS_QUBE}" user:"sha512sum -b "${_CS_FILE}" | cut -d' ' -f1")"
+    qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"mkdir -p -m 700 /etc/protect/checksum.${_CS_QUBE}$(dirname ${_CS_FILE}) ; rm -f \"/etc/protect/checksum.${_CS_QUBE}${_CS_FILE}\" ; echo -e \"${_CS_SHA256}\n${_CS_SHA512}\" > \"/etc/protect/checksum.${_CS_QUBE}${_CS_FILE}\"; chmod 0600 \"/etc/protect/checksum.${_CS_QUBE}${_CS_FILE}\""
+}
+
+
+case "${1}" in
+
+    file)
+        TARGET_QUBE="${2}"
+        SOURCE_QUBE="${3%%:*}"
+        FILE_PATH="${3#*:}"
+        [ -z "${TARGET_QUBE}" -o -z "${SOURCE_QUBE}" -o -z "${FILE_PATH}" ] && addkey_help
+
+        [ -e "/var/lib/qubes/appvms/${KEYS_QUBE}" ] || exit_with_error "ERROR: Appvm '${KEYS_QUBE}' not found"
+        [ -e "/var/lib/qubes/appvms/${TARGET_QUBE}" ] || exit_with_error "ERROR: Appvm '${TARGET_QUBE}' not found"
+        [ -e "/var/lib/qubes/appvms/${SOURCE_QUBE}" ] || exit_with_error "ERROR: Appvm '${SOURCE_QUBE}' not found"
+
+        KEYS_QUBE_TEMPLATE="$(qvm-prefs "${KEYS_QUBE}" template)"
+        [ -e "/run/qubes/qrexec.${KEYS_QUBE_TEMPLATE}" ] && TEMPLATE_RUNNING="1"
+        qvm-start --quiet --skip-if-running "${KEYS_QUBE_TEMPLATE}"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"[ -x /etc/protect/vm-boot-protect.sh ]" || exit_with_error "ERROR: Qube templating script not present in '${KEYS_QUBE_TEMPLATE}'"
+
+        [ -e "/run/qubes/qrexec.${SOURCE_QUBE}" ] && SOURCE_QUBE_RUNNING="1"
+        qvm-start --quiet --skip-if-running "${SOURCE_QUBE}"
+        qrexec-client -t -T -d "${SOURCE_QUBE}" root:"[ -e '${FILE_PATH}' ]" || exit_with_error "ERROR: File '${FILE_PATH}' not found in '${SOURCE_QUBE}'"
+        FILE_NAME="$(qrexec-client -t -T -d "${SOURCE_QUBE}" root:"basename '${FILE_PATH}'")"
+
+        qvm-start --quiet --skip-if-running "${KEYS_QUBE}"
+        if qrexec-client -t -T -d "${KEYS_QUBE}" root:"[ -f '/home/user/${TARGET_QUBE}/${FILE_NAME}' ]" ; then
+            echo -n "'/home/user/${TARGET_QUBE}/${FILE_NAME}' is already present in '${KEYS_QUBE}'. Overwrite? (N/y): "
+            read INPUT
+            [ x"$INPUT" = x"y" ] || exit_with_error "Not overwriting '/home/user/${TARGET_QUBE}/${FILE_NAME}' in '${KEYS_QUBE}', exiting"
+            qrexec-client -t -T -d "${KEYS_QUBE}" root:"chattr -i '/home/user/${TARGET_QUBE}/${FILE_NAME}'" || exit_with_error "ERROR: Cannot remove immutable property of '/home/user/${TARGET_QUBE}/${FILE_NAME}' in '${KEYS_QUBE}'"
+        else
+            qrexec-client -t -T -d "${KEYS_QUBE}" root:"[ -d '/home/user/${TARGET_QUBE}' ] || mkdir -m 0700 '/home/user/${TARGET_QUBE}'" || exit_with_error "ERROR: Cannot create '/home/user/${TARGET_QUBE}' in '${KEYS_QUBE}'"
+            qrexec-client -t -T -d "${KEYS_QUBE}" root:"chown user:user '/home/user/${TARGET_QUBE}'" || exit_with_error "ERROR: Cannot change ownership of '/home/user/${TARGET_QUBE}' in '${KEYS_QUBE}'"
+        fi
+        qrexec-client -d "${SOURCE_QUBE}" root:"cat '${FILE_PATH}'" | qrexec-client -d "${KEYS_QUBE}" root:"cat > '/home/user/${TARGET_QUBE}/${FILE_NAME}'" || exit_with_error "ERROR: Writing to '/home/user/${TARGET_QUBE}/${FILE_NAME}' in '${KEYS_QUBE}' failed"
+        qrexec-client -t -T -d "${KEYS_QUBE}" root:"chown user:user '/home/user/${TARGET_QUBE}/${FILE_NAME}'" || exit_with_error "ERROR: Changing ownership of '/home/user/${TARGET_QUBE}/${FILE_NAME}' in '${KEYS_QUBE}' failed"
+        qrexec-client -t -T -d "${KEYS_QUBE}" root:"chmod 0600 '/home/user/${TARGET_QUBE}/${FILE_NAME}'" || exit_with_error "ERROR: Changing permissions of '/home/user/${TARGET_QUBE}/${FILE_NAME}' in '${KEYS_QUBE}' failed"
+        FILE_SHA256="$(qrexec-client -t -T -d "${KEYS_QUBE}" root:"sha256sum -b '/home/user/${TARGET_QUBE}/${FILE_NAME}'" | cut -d' ' -f1)"
+        FILE_SHA512="$(qrexec-client -t -T -d "${KEYS_QUBE}" root:"sha512sum -b '/home/user/${TARGET_QUBE}/${FILE_NAME}'" | cut -d' ' -f1)"
+
+        # TODO: when transferring to Base, create services simila to password
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"[ -d '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}' ] || mkdir -p '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}'" || exit_with_error "ERROR: Cannot create '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}' in '${KEYS_QUBE_TEMPLATE}'"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown user:user '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}' in '${KEYS_QUBE_TEMPLATE}' failed"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0700 '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}' in '${KEYS_QUBE_TEMPLATE}' failed"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown user:user '/etc/protect/checksum.${KEYS_QUBE}/home/user'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home/user' in '${KEYS_QUBE_TEMPLATE}' failed"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0700 '/etc/protect/checksum.${KEYS_QUBE}/home/user'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home/user' in '${KEYS_QUBE_TEMPLATE}' failed"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown root:root '/etc/protect/checksum.${KEYS_QUBE}/home'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home' in '${KEYS_QUBE_TEMPLATE}' failed"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0755 '/etc/protect/checksum.${KEYS_QUBE}/home'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home' in '${KEYS_QUBE_TEMPLATE}' failed"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown root:root '/etc/protect/checksum.${KEYS_QUBE}'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}' in '${KEYS_QUBE_TEMPLATE}' failed"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0700 '/etc/protect/checksum.${KEYS_QUBE}'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}' in '${KEYS_QUBE_TEMPLATE}' failed"
+        echo "${FILE_SHA256}${ENTER}${FILE_SHA512}" | qrexec-client -d "${KEYS_QUBE_TEMPLATE}" root:"cat > '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}/${FILE_NAME}'" || exit_with_error "ERROR: Writing to '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}/${FILE_NAME}' in '${KEYS_QUBE_TEMPLATE}' failed"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown user:user '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}/${FILE_NAME}'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}/${FILE_NAME}' in '${KEYS_QUBE_TEMPLATE}' failed"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0600 '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}/${FILE_NAME}'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home/user/${TARGET_QUBE}/${FILE_NAME}' in '${KEYS_QUBE_TEMPLATE}' failed"
+
+        if ! cat "/etc/qubes-rpc/policy/liteqube.SplitFile" | grep "${TARGET_QUBE}[[:space:]]${KEYS_QUBE}" >/dev/null 2>&1 ; then
+            echo "WARNING: ${TARGET_QUBE} does not have permission to request files from ${KEYS_QUBE}"
+            echo -n "Do you want to add policy to allow this? (N/y): "
+            read INPUT
+            [ x"$INPUT" = x"y" ] && sudo /bin/sh -c "echo '${TARGET_QUBE} ${KEYS_QUBE} ask,default_target=${KEYS_QUBE}' >> /etc/qubes-rpc/policy/liteqube.SplitFile"
+        fi
+
+        echo ""
+        echo "Congratulations, '${FILE_NAME}' is now accessible from ${TARGET_QUBE}"
+        echo "To get it, run the following command in ${TARGET_QUBE}:"
+        echo "'qrexec-client-vm ${KEYS_QUBE} liteqube.SplitFile+${FILE_NAME}'"
+        ;;
+
+    password)
+        TARGET_QUBE="${2}"
+        PASSWORD_ID="${3}"
+        [ -n "${TARGET_QUBE}" -a -n "${PASSWORD_ID}" ] || addkey_help
+        [ -e "/var/lib/qubes/appvms/${KEYS_QUBE}" ] || exit_with_error "ERROR: Appvm '${KEYS_QUBE}' not found"
+        [ -e "/var/lib/qubes/appvms/${TARGET_QUBE}" ] || exit_with_error "ERROR: Appvm '${TARGET_QUBE}' not found"
+
+        read_password "Enter password: " "PASSWORD_1"
+        [ -n "${PASSWORD_1}" ] || exit_with_error "ERROR: No password entered"
+        read_password "Re-enter password: " "PASSWORD_2"
+        [ x"${PASSWORD_1}" = x"${PASSWORD_2}" ] || exit_with_error "ERROR: Passwords do not match"
+
+        KEYS_QUBE_TEMPLATE="$(qvm-prefs "${KEYS_QUBE}" template)"
+        [ -e "/run/qubes/qrexec.${KEYS_QUBE_TEMPLATE}" ] && TEMPLATE_RUNNING="1"
+        qvm-start --quiet --skip-if-running "${KEYS_QUBE_TEMPLATE}"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"[ -x /etc/protect/vm-boot-protect.sh ]" || exit_with_error "ERROR: Qube templating script not present in '${KEYS_QUBE_TEMPLATE}'"
+
+        HASH="$(echo -e "${TARGET_QUBE}\n${PASSWORD_ID}\n${PASSWORD_1}" | qvm-run --quiet --autostart --pass-io --no-gui --no-color-output --user root --service ${KEYS_QUBE} liteqube.SplitPasswordSave 2>/dev/null)"
+        [ -z "${HASH}" ] || echo -e "${TARGET_QUBE}\n${HASH}" | qvm-run --quiet --autostart --pass-io --no-gui --no-color-output --user root --service "${KEYS_QUBE_TEMPLATE}" liteqube.SplitPasswordChecksum 1>/dev/null 2>&1
+        [ -n "${HASH}" -a ${?} -eq 0 ] || exit_with_error "Password for ${TARGET_QUBE} not saved"
+
+        check_policy "SplitPassword" "password"
+
+        echo ""
+        echo "Congratulations, your password is now accessible from ${TARGET_QUBE}"
+        echo "To get it, run the following command in ${TARGET_QUBE}:"
+        echo "'qrexec-client-vm ${KEYS_QUBE} liteqube.SplitPassword+${PASSWORD_ID}'"
+        ;;
+
+    ssh)
+        TARGET_QUBE="${2}"
+        SOURCE_QUBE="${3%%:*}"
+        FILE_PATH="${3#*:}"
+        FILE_NAME="$(basename "${FILE_PATH}")"
+        [ -z "${SOURCE_QUBE}" -o -z "${FILE_PATH}" ] && addkey_help
+        [ x"${FILE_NAME}" = x"id_rsa" -o x"${FILE_NAME}" = x"id_rsa.pub" ] || exit_with_error "ERROR: Unknown key file '${FILE_NAME}'. Only 'id_rsa' and 'id_rsa.pub' are currently supported"
+
+        [ -e "/var/lib/qubes/appvms/${KEYS_QUBE}" ] || exit_with_error "ERROR: Appvm '${KEYS_QUBE}' not found"
+        [ -e "/var/lib/qubes/appvms/${SOURCE_QUBE}" ] || exit_with_error "ERROR: Appvm '${SOURCE_QUBE}' not found"
+        [ -e "/var/lib/qubes/appvms/${TARGET_QUBE}" ] || exit_with_error "ERROR: Appvm '${TARGET_QUBE}' not found"
+
+        KEYS_QUBE_TEMPLATE="$(qvm-prefs "${KEYS_QUBE}" template)"
+        [ -e "/run/qubes/qrexec.${KEYS_QUBE_TEMPLATE}" ] && TEMPLATE_RUNNING="1"
+        qvm-start --quiet --skip-if-running "${KEYS_QUBE_TEMPLATE}"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"[ -x /etc/protect/vm-boot-protect.sh ]" || exit_with_error "ERROR: Qube templating script not present in '${KEYS_QUBE_TEMPLATE}'"
+
+        [ -e "/run/qubes/qrexec.${SOURCE_QUBE}" ] && SOURCE_QUBE_RUNNING="1"
+        qvm-start --quiet --skip-if-running "${SOURCE_QUBE}"
+        qrexec-client -t -T -d "${SOURCE_QUBE}" root:"[ -e '${FILE_PATH}' ]" || exit_with_error "ERROR: File '${FILE_PATH}' not found in '${SOURCE_QUBE}'"
+
+        if [ x"${FILE_NAME}" = x"id_rsa.pub" ] ; then
+            # TODO install empty files in 1.Base
+            qrexec-client -t -T -d "${KEYS_QUBE}" root:"chattr -i '/home/user/.ssh/id_rsa.pub'" || exit_with_error "ERROR: Cannot remove immutable property of '/home/user/.ssh/id_rsa.pub' in '${KEYS_QUBE}'"
+            qrexec-client -t -T -d "${SOURCE_QUBE}" root:"cat '${FILE_PATH}'" | \
+            while read -r LINE ; do
+                qrexec-client -d "${KEYS_QUBE}" root:"grep -q '${LINE}' /home/user/.ssh/id_rsa.pub" </dev/null || echo "${LINE}" | qrexec-client -d "${KEYS_QUBE}" root:"tee -a /home/user/.ssh/id_rsa.pub" >/dev/null
+            done
+
+            # TODO: when transferring to Base, create services similar to password
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"[ -d '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh' ] || mkdir -p '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh'" || exit_with_error "ERROR: Cannot create '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh' in '${KEYS_QUBE_TEMPLATE}'"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown user:user '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0700 '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown user:user '/etc/protect/checksum.${KEYS_QUBE}/home/user'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home/user' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0700 '/etc/protect/checksum.${KEYS_QUBE}/home/user'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home/user' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown root:root '/etc/protect/checksum.${KEYS_QUBE}/home'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0755 '/etc/protect/checksum.${KEYS_QUBE}/home'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown root:root '/etc/protect/checksum.${KEYS_QUBE}'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0700 '/etc/protect/checksum.${KEYS_QUBE}'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}' in '${KEYS_QUBE_TEMPLATE}' failed"
+
+            # TODO: consider using separate ssh dir for each connecting qube, sort of ssh key isolation
+            FILE_SHA256="$(qrexec-client -t -T -d "${KEYS_QUBE}" root:"sha256sum -b /home/user/.ssh/id_rsa.pub" | cut -d' ' -f1)"
+            FILE_SHA512="$(qrexec-client -t -T -d "${KEYS_QUBE}" root:"sha512sum -b /home/user/.ssh/id_rsa.pub" | cut -d' ' -f1)"
+            echo "${FILE_SHA256}${ENTER}${FILE_SHA512}" | qrexec-client -d "${KEYS_QUBE_TEMPLATE}" root:"cat > '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa.pub'" || exit_with_error "ERROR: Writing to '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa.pub' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown user:user '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa.pub'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa.pub' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0600 '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa.pub'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa.pub' in '${KEYS_QUBE_TEMPLATE}' failed"
+        fi
+
+        if [ x"${FILE_NAME}" = x"id_rsa" ] ; then
+            qrexec-client -t -T -d "${KEYS_QUBE}" root:"chattr -i '/home/user/.ssh/id_rsa'" || exit_with_error "ERROR: Cannot remove immutable property of '/home/user/.ssh/id_rsa' in '${KEYS_QUBE}'"
+            qrexec-client -t -T -d "${SOURCE_QUBE}" root:"cat '${FILE_PATH}'" | \
+            while read -r LINE ; do
+                CURRENT_KEY="${CURRENT_KEY}${LINE}"
+                [ x"${LINE}" = x"-----END RSA PRIVATE KEY-----" ] || CURRENT_KEY="${CURRENT_KEY}${ENTER}"
+                [ x"${LINE}" = x"-----END RSA PRIVATE KEY-----" ] || continue
+                ! echo "${CURRENT_KEY}"| qrexec-client -t -T -d "${KEYS_QUBE}" root:"diff - /home/user/.ssh/id_rsa | grep -q '^>'" || echo "${CURRENT_KEY}" | qrexec-client -t -T -d "${KEYS_QUBE}" root:"tee -a /home/user/.ssh/id_rsa" >/dev/null
+                CURRENT_KEY=
+            done
+
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"[ -d '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh' ] || mkdir -p '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh'" || exit_with_error "ERROR: Cannot create '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh' in '${KEYS_QUBE_TEMPLATE}'"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown user:user '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0700 '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown user:user '/etc/protect/checksum.${KEYS_QUBE}/home/user'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home/user' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0700 '/etc/protect/checksum.${KEYS_QUBE}/home/user'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home/user' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown root:root '/etc/protect/checksum.${KEYS_QUBE}/home'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0755 '/etc/protect/checksum.${KEYS_QUBE}/home'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown root:root '/etc/protect/checksum.${KEYS_QUBE}'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0700 '/etc/protect/checksum.${KEYS_QUBE}'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}' in '${KEYS_QUBE_TEMPLATE}' failed"
+
+            # TODO: consider using separate ssh dir for each connecting qube, sort of ssh key isolation
+            FILE_SHA256="$(qrexec-client -t -T -d "${KEYS_QUBE}" root:"sha256sum -b /home/user/.ssh/id_rsa" | cut -d' ' -f1)"
+            FILE_SHA512="$(qrexec-client -t -T -d "${KEYS_QUBE}" root:"sha512sum -b /home/user/.ssh/id_rsa" | cut -d' ' -f1)"
+            echo "${FILE_SHA256}${ENTER}${FILE_SHA512}" | qrexec-client -d "${KEYS_QUBE_TEMPLATE}" root:"cat > '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa'" || exit_with_error "ERROR: Writing to '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown user:user '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa'" || exit_with_error "ERROR: Changing ownership of '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa' in '${KEYS_QUBE_TEMPLATE}' failed"
+            qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0600 '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa'" || exit_with_error "ERROR: Changing permissions of '/etc/protect/checksum.${KEYS_QUBE}/home/user/.ssh/id_rsa' in '${KEYS_QUBE_TEMPLATE}' failed"
+        fi
+
+        check_policy "SplitSSH" "SSH keys"
+
+        echo ""
+        echo "Congratulations, keys from '${FILE_NAME}' are now accessible in ${TARGET_QUBE}"
+        echo "To use these, run the following commands in ${TARGET_QUBE}:"
+        echo "'systemctl start liteqube-split-ssh.socket'"
+        echo "'export SSH_AUTH_SOCK=/home/user/.ssh/ssh-agent-core-keys'"
+        echo "and then run ssh normally."
+        ;;
+
+    gpg)
+        TARGET_QUBE="${2}"
+        SOURCE_QUBE="${3%%:*}"
+        KEY_ID="${3#*:}"
+        [ -z "${TARGET_QUBE}" -o -z "${SOURCE_QUBE}" -o -z "${KEY_ID}" ] && addkey_help
+
+        [ -e "/var/lib/qubes/appvms/${KEYS_QUBE}" ] || exit_with_error "ERROR: Appvm '${KEYS_QUBE}' not found"
+        [ -e "/var/lib/qubes/appvms/${SOURCE_QUBE}" ] || exit_with_error "ERROR: Appvm '${SOURCE_QUBE}' not found"
+        [ -e "/var/lib/qubes/appvms/${TARGET_QUBE}" ] || exit_with_error "ERROR: Appvm '${TARGET_QUBE}' not found"
+
+        KEYS_QUBE_TEMPLATE="$(qvm-prefs "${KEYS_QUBE}" template)"
+        [ -e "/run/qubes/qrexec.${KEYS_QUBE_TEMPLATE}" ] && TEMPLATE_RUNNING="1"
+        qvm-start --quiet --skip-if-running "${KEYS_QUBE_TEMPLATE}"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"[ -x /etc/protect/vm-boot-protect.sh ]" || exit_with_error "ERROR: Qube templating script not present in '${KEYS_QUBE_TEMPLATE}'"
+
+        TARGET_QUBE_TEMPLATE="$(qvm-prefs "${TARGET_QUBE}" template)"
+        [ -e "/run/qubes/qrexec.${TARGET_QUBE_TEMPLATE}" ] && TARGET_TEMPLATE_RUNNING="1"
+        qvm-start --quiet --skip-if-running "${TARGET_QUBE_TEMPLATE}"
+
+        [ -e "/run/qubes/qrexec.${SOURCE_QUBE}" ] && SOURCE_QUBE_RUNNING="1"
+        qvm-start --quiet --skip-if-running "${SOURCE_QUBE}"
+        qrexec-client -t -T -d "${SOURCE_QUBE}" user:"gpg --armor --export-secret-subkeys ${KEY_ID}" >/dev/null || exit_with_error "ERROR: Private key '${KEY_ID}' not found in '${SOURCE_QUBE}'"
+        qrexec-client -t -T -d "${SOURCE_QUBE}" user:"gpg --armor --export ${KEY_ID}!" >/dev/null || exit_with_error "ERROR: Public key '${KEY_ID}' not found in '${SOURCE_QUBE}'"
+
+        qvm-start --quiet --skip-if-running "${KEYS_QUBE}"
+        qrexec-client -t -T -d "${KEYS_QUBE}" user:"chattr -i /home/user/.gnupg/pubring.kbx"
+
+        qrexec-client -t -T -d "${SOURCE_QUBE}" user:"gpg --armor --export-secret-subkeys ${KEY_ID}" | qrexec-client -t -T -d "${KEYS_QUBE}" user:"gpg --allow-secret-key-import --import"
+        qrexec-client -t -T -d "${SOURCE_QUBE}" user:"gpg --armor --export ${KEY_ID}!" | qrexec-client -t -T -d "${KEYS_QUBE}" user:"gpg --import"
+
+        qrexec-client -t -T -d "${KEYS_QUBE}" user:"rm /home/user/.gnupg/pubring.kbx~"
+        KEYGRIP="$(qrexec-client -t -T -d "${SOURCE_QUBE}" user:"gpg --list-keys --with-keygrip ${KEY_ID} | grep Keygrip | tail -n1 | cut -d= -f2 | cut -c2-")"
+        checksum "${KEYS_QUBE}" "/home/user/.gnupg/private-keys-v1.d/${KEYGRIP}.key"
+        checksum "${KEYS_QUBE}" "/home/user/.gnupg/pubring.kbx"
+        checksum "${KEYS_QUBE}" "/home/user/.gnupg/trustdb.gpg"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chmod 0640 /etc/protect/checksum.${KEYS_QUBE}/home/user/.gnupg/trustdb.gpg"
+        qrexec-client -t -T -d "${KEYS_QUBE_TEMPLATE}" root:"chown -R user:user /etc/protect/checksum.${KEYS_QUBE}/home/user"
+
+        qvm-start --quiet --skip-if-running "${TARGET_QUBE}"
+        qrexec-client -t -T -d "${SOURCE_QUBE}" user:"gpg --armor --export ${KEY_ID}!" | qrexec-client -t -T -d "${TARGET_QUBE}" user:"gpg --import"
+
+        echo "[Unit]${ENTER}Description=GPG remote agent socket${ENTER}${ENTER}[Socket]${ENTER}ExecStartPre=/bin/mkdir -p /run/user/1000/gnupg${ENTER}ExecStartPre=/bin/chmod 0700 /run/user/1000${ENTER}ExecStartPre=/bin/chmod 0700 /run/user/1000/gnupg${ENTER}ExecStartPre=/bin/chown user:user /run/user/1000${ENTER}ExecStartPre=/bin/chown user:user /run/user/1000/gnupg${ENTER}ListenStream=/run/user/1000/gnupg/S.gpg-agent${ENTER}Accept=yes${ENTER}MaxConnections=1${ENTER}SocketUser=user${ENTER}SocketGroup=user${ENTER}SocketMode=0600${ENTER}DirectoryMode=0700${ENTER}${ENTER}[Install]${ENTER}WantedBy=sockets.target" | qrexec-client -t -T -d "${TARGET_QUBE_TEMPLATE}" root:"cat > /lib/systemd/system/liteqube-split-gpg.socket"
+        echo "[Unit]${ENTER}Description=Split GPG - Client side${ENTER}Requires=liteqube-split-gpg.socket${ENTER}After=liteqube-split-gpg.socket${ENTER}${ENTER}[Service]${ENTER}Type=simple${ENTER}User=user${ENTER}Group=user${ENTER}StandardInput=socket${ENTER}StandardOutput=socket${ENTER}StandardError=journal${ENTER}ExecStart=/usr/bin/qrexec-client-vm core-keys liteqube.SplitGPG" | qrexec-client -t -T -d "${TARGET_QUBE_TEMPLATE}" root:"cat > /lib/systemd/system/liteqube-split-gpg@.service"
+
+        check_policy "SplitGPG" "PGP keys"
+
+        echo ""
+        echo "Congratulations, private key '${KEY_ID}' is now accessible in ${TARGET_QUBE}"
+        echo "To use it, run the following command in ${TARGET_QUBE}:"
+        echo "'systemctl start liteqube-split-gpg.socket'"
+        echo "and then use gpg normally."
+        ;;
+
+    *)
+        addkey_help
+        ;;
+
+esac
+
+[ -z "${SOURCE_QUBE_RUNNING}" ] || qvm-shutdown --quiet --wait --force "${SOURCE_QUBE}"
+[ -z "${TEMPLATE_RUNNING}" ] || qvm-shutdown --quiet --wait --force "${KEYS_QUBE_TEMPLATE}"
+[ -z "${TARGET_TEMPLATE_RUNNING}" ] || qvm-shutdown --quiet --wait --force "${TARGET_QUBE_TEMPLATE}"
+
+exit 0

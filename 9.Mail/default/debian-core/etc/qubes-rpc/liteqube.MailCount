@@ -1,0 +1,23 @@
+#!/bin/sh
+
+MAIL_DIR="/home/user/getmail"
+
+[ -d "${MAIL_DIR}" ] || exit 1
+
+{
+    if ! /usr/bin/flock --exclusive --nonblock 7 ; then
+        /usr/bin/qrexec-client-vm dom0 "liteqube.Error+Counting messages locked out"
+        exit 1
+    fi
+
+    for ACCOUNT in $(ls -1 "${MAIL_DIR}") ; do
+        MAILFILE="${MAIL_DIR}/${ACCOUNT}/mailbox.mbox"
+        COUNT=$(grep -c '^From ' < "${MAILFILE}")
+        /usr/bin/qrexec-client-vm dom0 "liteqube.SignalMail+${ACCOUNT}_CNT_${COUNT}"
+    done
+
+    /usr/bin/sudo /sbin/shutdown now 1>/dev/null 2>&1
+
+} 7>/tmp/test
+
+exit 0
