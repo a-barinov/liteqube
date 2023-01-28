@@ -444,7 +444,7 @@ fi
 
 message "CONFIGURING ${YELLOW}${VM_UPDATE}"
 qvm-prefs --quiet --set "${VM_UPDATE}" maxmem 0
-qvm-prefs --quiet --set "${VM_UPDATE}" memory 1024
+qvm-prefs --quiet --set "${VM_UPDATE}" memory 4096
 qvm-prefs --quiet --set "${VM_UPDATE}" netvm "${VM_FW_TOR}"
 #qvm-prefs --quiet --set "${VM_UPDATE}" guivm ''
 qvm-prefs --quiet --set "${VM_UPDATE}" audiovm ''

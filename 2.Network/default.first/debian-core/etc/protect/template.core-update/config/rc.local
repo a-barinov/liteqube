@@ -9,8 +9,8 @@ if [ -e /var/run/qubes/qubes-ns ] ; then
 fi
 echo "nameserver ${NS1}${RETURN}nameserver ${NS2}" > /run/resolv.conf
 
-/bin/umount /var/tmp
-/bin/mount / -o rw,remount
+/bin/mount /var/tmp -o remount,size=90%
+/bin/mount -t tmpfs tmpfs /var/lib/qubes/dom0-updates -o rw,nosuid,nodev,noexec,noatime,inode64,size=90%
 
 /bin/systemctl enable qubes-iptables
 /bin/systemctl start qubes-iptables
