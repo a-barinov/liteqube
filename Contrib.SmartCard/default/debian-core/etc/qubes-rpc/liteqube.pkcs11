@@ -1,0 +1,2 @@
+#!/bin/sh
+/usr/bin/nc -U /tmp/pkcs11.socket

@@ -1,0 +1,4 @@
+-rw-r--r--	root	root	./dom0/etc/qubes-rpc/policy/liteqube.pkcs11
+-r--r--r--	root	root	./debian-core/lib/systemd/system/liteqube-pkcs11.service
+-r--r--r--	root	root	./debian-core/lib/systemd/system/pcscd.service.d/30_qubes.conf
+-rwxr-xr-x	root	root	./debian-core/etc/qubes-rpc/liteqube.pkcs11

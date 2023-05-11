@@ -1,0 +1,12 @@
+[Unit]
+Description=Systemd service for p11-kit/pkcs11 daemon
+
+[Install]
+WantedBy=sockets.target
+
+[Service]
+ExecStart=sh -c "/usr/bin/qrexec-client-vm `cat /var/run/user/%U/p11-kit.target` liteqube.pkcs11"
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+
