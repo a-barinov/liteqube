@@ -1,0 +1,4 @@
+module: p11-kit-client.so
+
+disable-in: gnome-calculator
+
