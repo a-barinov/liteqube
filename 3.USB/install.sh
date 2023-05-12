@@ -22,7 +22,6 @@ chmod +x ../.lib/lib.sh
 . ../.lib/lib.sh
 set -e
 
-
 if ! vm_exists "${VM_CORE}" ; then
     message "ERROR: ${YELLOW}${VM_CORE}${PREFIX} NOT FOUND"
     exit 1
@@ -35,7 +34,6 @@ if ! vm_exists "${VM_XORG}" ; then
     message "ERROR: ${YELLOW}${VM_XORG}${PREFIX} NOT FOUND, PLEASE RUN BASE INSTALL"
     exit 1
 fi
-
 
 if ! vm_exists "${VM_USB}" ; then
     message "CREATING ${YELLOW}${VM_USB}"
@@ -100,7 +98,6 @@ if [ -x ./custom/custom.sh ] ; then
     . ./custom/custom.sh
 fi
 message "DONE CUSTOMISING"
-
 
 message "RESTARTING ${YELLOW}${VM_CORE}"
 qvm-shutdown --quiet --wait --force "${VM_CORE}"
