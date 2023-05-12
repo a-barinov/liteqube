@@ -7,9 +7,11 @@ USB_INPUT_DEVICES="True"
 # Set to "True" to not require PCI device reset
 USB_NO_STRICT_RESET="True"
 
+# Set to "True" to include Bluetooth USB support
+INCLUDE_BLUETOOTH_USB="False"
+
 # sys-usb vm name
 SYS_USB="sys-usb"
-
 
 #########################################################################
 #       Do not edit code below unless you know what you are doing       #
@@ -19,7 +21,6 @@ SYS_USB="sys-usb"
 chmod +x ../.lib/lib.sh
 . ../.lib/lib.sh
 set -e
-
 
 if ! vm_exists "${VM_CORE}" ; then
     message "ERROR: ${YELLOW}${VM_CORE}${PREFIX} NOT FOUND"
@@ -33,7 +34,6 @@ if ! vm_exists "${VM_XORG}" ; then
     message "ERROR: ${YELLOW}${VM_XORG}${PREFIX} NOT FOUND, PLEASE RUN BASE INSTALL"
     exit 1
 fi
-
 
 if ! vm_exists "${VM_USB}" ; then
     message "CREATING ${YELLOW}${VM_USB}"
@@ -66,7 +66,6 @@ for SERVICE in usbguard usbguard-dbus ; do
     push_command "${VM_CORE}" "systemctl disable ${SERVICE} >/dev/null 2>&1" >/dev/null 2>&1 || true
 done
 
-
 message "CONFIGURING ${YELLOW}dom0"
 push_files "dom0"
 sudo qubes-dom0-update --console --show-output qubes-usb-proxy-dom0
@@ -85,13 +84,20 @@ else
     sudo rm -f /etc/qubes-rpc/policy/qubes.Input*
 fi
 
+if [ "${INCLUDE_BLUETOOTH_USB}" = "True" ] ; then
+    message "CONFIGURING BLUETOOTH IN ${YELLOW}${VM_CORE}"
+    push_command "${VM_CORE}" "apt-get -q -y install bluez bluez-utils"
+    filtered_devices="$(filter_bluetooth_devices "${SYS_USB}")"
+for device in ${filtered_devices}; do
+    qvm-pci attach "${VM_USB}" "${device}" --persistent ${OPTIONS} || true
+done
+fi
 
 message "CUSTOMISING INSTALLATION"
 if [ -x ./custom/custom.sh ] ; then
     . ./custom/custom.sh
 fi
 message "DONE CUSTOMISING"
-
 
 message "RESTARTING ${YELLOW}${VM_CORE}"
 qvm-shutdown --quiet --wait --force "${VM_CORE}"

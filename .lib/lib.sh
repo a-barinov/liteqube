@@ -375,3 +375,18 @@ install_settings()
     file_to_vm "./settings-qube.sh" "${VM_CORE}" "${_INSTS_TARGET}"
     push_command "${VM_CORE}" "chmod 755 ${_INSTS_TARGET}"
 }
+
+filter_bluetooth_devices()
+{
+    _DEVICES="${1}"
+
+    _FILTERED_DEVICES=""
+
+    for device in $_DEVICES; do
+        if [[ $(lsusb -s $device: | grep -i bluetooth) ]]; then
+            _FILTERED_DEVICES="${_FILTERED_DEVICES} ${device}"
+        fi
+    done
+
+    echo "${_FILTERED_DEVICES}"
+}
