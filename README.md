@@ -1,6 +1,16 @@
 
 # Liteqube puts Qubes OS on a diet
 
+Copyright (C) 2017-2023  Alex Barinov
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program.  If not, see [here](https://www.gnu.org/licenses/).
+
+***Please note I currently do not have time to maintain Liteqube, it is not updated to support Qubes 4.2.***
+
 Liteqube was created in 2017 to run Qubes on a rather low-spec GPD Win 2 (Core m3-7Y30, 8Mb RAM). Taking 2Gb of RAM to run dom0 and fully torified set of services, it allowed me to use a device with 8MB of RAM quite comfortably.
 
 5 years further down the road, Liteqube grew wider but not fatter and still pursues the original goals:
