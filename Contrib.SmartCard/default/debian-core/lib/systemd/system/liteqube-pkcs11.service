@@ -1,0 +1,12 @@
+[Unit]
+Description=pkcs#11 smartcard proxy
+ConditionPathExists=/var/run/qubes-service/qubes-pkcs11
+
+[Service]
+Type=oneshot
+User=user
+ExecStart=p11-kit server -p /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so -n /tmp/pkcs11.socket pkcs11:
+
+[Install]
+WantedBy=default.target
+

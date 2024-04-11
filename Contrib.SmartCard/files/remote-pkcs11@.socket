@@ -1,0 +1,15 @@
+[Unit]
+Description=Systemd socket for p11-kit/pkcs11 daemon
+ConditionPathExists=/var/run/qubes-service/remote-pkcs11
+
+[Socket]
+ListenStream=/run/user/%U/p11-kit/pkcs11
+SocketMode=0666
+Accept=yes
+ExecStartPre=mkdir --mode 700 -p /var/run/user/%U/p11-kit 
+ExecStartPre=sh -c "echo %i >/var/run/user/%U/p11-kit.target"
+
+[Install]
+WantedBy=sockets.target
+
+
