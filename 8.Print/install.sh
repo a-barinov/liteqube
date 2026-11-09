@@ -2,7 +2,7 @@
 
 
 # Space-separated list of qubes having access to printing
-QUBES_ALLOWED_TO_PRINT="fedora-34 debian-11-minimal"
+QUBES_ALLOWED_TO_PRINT="personal work"
 
 # PDF previewer package (and command)
 PDF_PREVIEW="zathura-pdf-poppler"
@@ -55,7 +55,11 @@ done
 message "CONFIGURING ${YELLOW}dom0"
 push_files "dom0"
 setup_permissions "${VM_PRINT}" xorg
-for VM in ${QQUBES_ALLOWED_TO_PRINT} ; do
+for VM in ${QUBES_ALLOWED_TO_PRINT} ; do
+    if ! vm_exists "${VM}" ; then
+        message "QUBE ${YELLOW}${VM}${PREFIX} NOT FOUND, SKIPPING PRINTER SETUP FOR IT"
+        continue
+    fi
     add_permission "PrintFile" "${VM}" "${VM_PRINT}" "ask default_target=${VM_PRINT}"
 done
 dom0_install_command lq-printers
@@ -66,8 +70,9 @@ dom0_install_command lq-printers
 message "INSTALLING ${YELLOW}cups-pdf${PREFIX} TO TEMPLATES"
 TEMPLATES_MODIFIED=""
 for VM in ${QUBES_ALLOWED_TO_PRINT} ; do
+    vm_exists "${VM}" || continue
     TEMPLATE="$(vm_find_template "${VM}")"
-    if ! echo "${TEMPLATES_MODIFIED}" | grep "^${VM}$$" >/dev/null 2>&1 ; then
+    if ! echo "${TEMPLATES_MODIFIED}" | grep -qxF "${TEMPLATE}" ; then
         TEMPLATE_TYPE="$(vm_type "${TEMPLATE}")"
         case "${TEMPLATE_TYPE}" in
             debian)
@@ -89,7 +94,7 @@ for VM in ${QUBES_ALLOWED_TO_PRINT} ; do
                 ;;
         esac
         qvm-shutdown --quiet --wait --force "${TEMPLATE}"
-        TEMPLATES_MODIFIED="${TEMPLATES_MODIFIED}${ENTER}${VM}"
+        TEMPLATES_MODIFIED="${TEMPLATES_MODIFIED}${ENTER}${TEMPLATE}"
     fi
 done
 

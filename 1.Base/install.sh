@@ -146,7 +146,7 @@ else
     VM_DVM_CREATED="false"
 fi
 
-vm_configure ${VM_CORE} 'pvh' 512 '' ''
+vm_configure ${VM_DVM} 'pvh' 512 '' ''
 qvm-prefs --quiet "${VM_DVM}" template_for_dispvms True
 qvm-start --quiet --skip-if-running "${VM_DVM}" || true
 

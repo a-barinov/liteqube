@@ -88,7 +88,7 @@ vm_create()
                 qvm-create --class AppVM --template "${VM_CORE}" --label "${COLOR_WORKERS}" "${_VMC_VM}"
                 ;;
             *)
-                message "ERROR: UNKNOWN VM TYPE ${YELLOW}${_TYPE}${PREFIX} FOR ${YELLOW}${_VMC_VM}${PREFIX}"
+                message "ERROR: UNKNOWN VM TYPE ${YELLOW}${_VMC_TYPE}${PREFIX} FOR ${YELLOW}${_VMC_VM}${PREFIX}"
                 exit 1
                 ;;
         esac
@@ -324,7 +324,7 @@ dom0_download()
 {
     _URL="${1}"
     _DEST="${2}"
-    _SHA256URL="{$3}"
+    _SHA256URL="${3}"
     if ! vm_exists "${VM_UPDATE}" ; then 
         message "${VM_UPDATE} does not exist yet, making a temporary one"
         _UPDATE_AUTOREMOVE="True"

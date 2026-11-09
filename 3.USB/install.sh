@@ -49,8 +49,8 @@ message "RECORDING SNAPSHOT FOR ${YELLOW}${VM_CORE}"
 qvm-volume info "${VM_CORE}:root" revisions|tail -1 >"/tmp/liteqube-rollback.3/snapshot-${VM_CORE}-root.id"
 qvm-volume info "${VM_CORE}:private" revisions|tail -1 >"/tmp/liteqube-rollback.3/snapshot-${VM_CORE}-private.id"
 message "MAKING ${YELLOW}dom0${PREFIX} CONFIG BACKUPS"
-cp /etc/qubes/policy.d/50-config-input.policy /tmp/liteqube-rollback.3/
-cp /etc/qubes/policy.d/50-config-u2f.policy /tmp/liteqube-rollback.3/
+[ ! -e /etc/qubes/policy.d/50-config-input.policy ] || cp /etc/qubes/policy.d/50-config-input.policy /tmp/liteqube-rollback.3/
+[ ! -e /etc/qubes/policy.d/50-config-u2f.policy ] || cp /etc/qubes/policy.d/50-config-u2f.policy /tmp/liteqube-rollback.3/
 cp ${LQ_POLICYFILE} /tmp/liteqube-rollback.3/
 
 vm_create "${VM_USB}" dispvm
@@ -103,17 +103,22 @@ if [ x"${USB_SMARTCARD}" = x"True" ] ; then
     push_command "${VM_CORE}" "systemctl enable pcscd.service" 
     qvm-service -e ${VM_SC} liteqube-pkcs11
     for VM in ${QUBES_SMARTCARD_CLIENTS} ; do
-   	add_permission "pkcs11" "${VM}" "${VM_SC}" "allow target=${VM_SC}"
+        if ! vm_exists "${VM}" ; then
+            message "QUBE ${YELLOW}${VM}${PREFIX} NOT FOUND, SKIPPING SMARTCARD SETUP FOR IT"
+            continue
+        fi
+        add_permission "pkcs11" "${VM}" "${VM_SC}" "allow target=${VM_SC}"
     done
     message "INSTALLING ${YELLOW}p11-kit${PREFIX} TO TEMPLATES"
     sed -e "s/TARGET/${VM_SC}/" <"./files/remote-pkcs11.module.in" >"./files/remote-pkcs11.module"
     echo "${SMARTCARD_MODCONFIG}" >>"./files/remote-pkcs11.module"
     TEMPLATES_MODIFIED=""
     for VM in ${QUBES_SMARTCARD_CLIENTS} ; do
+        vm_exists "${VM}" || continue
         qvm-service -e ${VM} remote-pkcs11
         qvm-service -e ${VM} qubes-ctapproxy
         TEMPLATE="$(vm_find_template "${VM}")"
-        if ! echo "${TEMPLATES_MODIFIED}" | grep "^${VM}$$" >/dev/null 2>&1 ; then
+        if ! echo "${TEMPLATES_MODIFIED}" | grep -qxF "${TEMPLATE}" ; then
             TEMPLATE_TYPE="$(vm_type "${TEMPLATE}")"
        	    case "${TEMPLATE_TYPE}" in
        	    debian)
@@ -133,7 +138,7 @@ if [ x"${USB_SMARTCARD}" = x"True" ] ; then
             ;;
             esac
             qvm-shutdown --quiet --wait --force "${TEMPLATE}"
-            TEMPLATES_MODIFIED="${TEMPLATES_MODIFIED}${ENTER}${VM}"
+            TEMPLATES_MODIFIED="${TEMPLATES_MODIFIED}${ENTER}${TEMPLATE}"
         fi
     done
 fi
