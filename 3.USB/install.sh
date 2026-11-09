@@ -86,12 +86,21 @@ else
     sudo rm -f /etc/qubes/policy.d/50-config-input.policy
 fi
 
-qvm-ls --class TemplateVM --fields NAME|tail -n +2|while read TEMPLATE; do
-    push_command "${TEMPLATE}" "systemctl is-enabled qubes-ctappoxy@${SYS_USB}" && (
-    echo "Found ctap proxy on ${TEMPLATE} to ${SYS_USB}, redirecting to ${VM_SC}";
-    push_command "${TEMPLATE}" "systemctl disable qubes-ctappoxy@${SYS_USB}";
-    push_command "${TEMPLATE}" "systemctl enable qubes-ctappoxy@${VM_SC}"; )
-    qvm-shutdown --quiet --wait --force "${TEMPLATE}"
+message "LOOKING FOR CTAP PROXY POINTING TO ${YELLOW}${SYS_USB}${PREFIX} IN TEMPLATES"
+for TEMPLATE in $(qvm-ls --class TemplateVM --raw-list) ; do
+    # mirage-firewall template has no qrexec agent, nothing to look at there
+    [ x"${TEMPLATE}" = x"${VM_FW_BASE}" ] && continue
+    if qvm-check --quiet --running "${TEMPLATE}" >/dev/null 2>&1 ; then
+        TEMPLATE_WAS_RUNNING="yes"
+    else
+        TEMPLATE_WAS_RUNNING="no"
+    fi
+    # templates that cannot be started or reached over qrexec are skipped, not fatal
+    if push_command "${TEMPLATE}" "systemctl is-enabled qubes-ctapproxy@${SYS_USB} >/dev/null 2>&1" >/dev/null 2>&1 ; then
+        message "FOUND CTAP PROXY ON ${YELLOW}${TEMPLATE}${PREFIX} TO ${YELLOW}${SYS_USB}${PREFIX}, REDIRECTING TO ${YELLOW}${VM_SC}"
+        push_command "${TEMPLATE}" "systemctl disable qubes-ctapproxy@${SYS_USB} ; systemctl enable qubes-ctapproxy@${VM_SC}" || true
+    fi
+    [ x"${TEMPLATE_WAS_RUNNING}" = x"yes" ] || qvm-shutdown --quiet --wait --force "${TEMPLATE}" >/dev/null 2>&1 || true
 done
 
 if [ x"${USB_SMARTCARD}" = x"True" ] ; then
