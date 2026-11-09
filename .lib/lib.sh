@@ -444,3 +444,17 @@ install_settings()
     file_to_vm "./settings-qube.sh" "${VM_CORE}" "${_INSTS_TARGET}"
     push_command "${VM_CORE}" "chmod 755 ${_INSTS_TARGET}"
 }
+
+# Point every qube that uses $1 as its netvm back to the default netvm, so $1 can be removed
+vm_release_netvm()
+{
+    _VRN_NETVM="${1}"
+
+    vm_exists "${_VRN_NETVM}" || return 0
+    qvm-ls --raw-data --fields NAME,NETVM 2>/dev/null | while IFS='|' read -r _VRN_VM _VRN_VM_NETVM ; do
+        [ x"${_VRN_VM_NETVM}" = x"${_VRN_NETVM}" ] || continue
+        [ x"${_VRN_VM}" = x"${_VRN_NETVM}" ] && continue
+        message "RESETTING NETVM OF ${YELLOW}${_VRN_VM}${PREFIX} TO DEFAULT"
+        qvm-prefs --quiet --default "${_VRN_VM}" netvm 2>/dev/null || qvm-prefs --quiet --set "${_VRN_VM}" netvm '' 2>/dev/null || true
+    done
+}
