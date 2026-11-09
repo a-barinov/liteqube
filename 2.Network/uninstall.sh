@@ -30,11 +30,17 @@ if [ -d /tmp/liteqube-rollback.2 ] ; then
     cp /tmp/liteqube-rollback.2/40-config-liteqube.policy /etc/qubes/policy.d/
     qubes-prefs --quiet --set updatevm `cat /tmp/liteqube-rollback.2/updatevm`
     sudo cp /tmp/liteqube-rollback.2/qubes-dom0.repo /etc/yum.repos.d
+    [ ! -e /tmp/liteqube-rollback.2/dnf.conf ] || sudo cp /tmp/liteqube-rollback.2/dnf.conf /etc/dnf/dnf.conf
     qvm-volume revert "${VM_CORE}:root" `cat /tmp/liteqube-rollback.2/snapshot-${VM_CORE}-root.id`
     qvm-volume revert "${VM_CORE}:root" `cat /tmp/liteqube-rollback.2/snapshot-${VM_CORE}-private.id`
 else
     message "ROLLBACK DIRECTORY NOT FOUND"
 fi
+
+message "RESETTING NETVM OF QUBES STILL USING LITEQUBE NETWORK QUBES"
+for VM in "${VM_UPDATE}" "${VM_FW_TOR}" "${VM_TOR}" "${VM_FW_NET}" "${VM_NET}" ; do
+    vm_release_netvm "${VM}"
+done
 
 qvm-remove --force "${VM_UPDATE}"
 qvm-remove --force "${VM_FW_TOR}"
