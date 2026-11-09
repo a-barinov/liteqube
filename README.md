@@ -109,7 +109,7 @@ core-tor also acts as clockvm, synchronising time with several onion services vi
 
 During the installation, your dom0 update source will be changed to onion Qubes OS site. I hope you don't mind.
 
-If core net crashes or hangs on start (can happen if your network drivers require more memoty than intel's), try increasing memory allocated to 'core-net' from 208Mb to something bigger.
+If core net crashes or hangs on start (can happen if your network drivers require more memoty than intel's), try increasing memory allocated to 'core-net' from the default 384Mb (`NET_VM_MEMORY` in `2.Network/install.sh`) to something bigger.
 
 ### USB
 This will create core-usb disposable qube and assign all sys-usb devises to it. [Usbguard](https://usbguard.github.io/) is deployed by default in permissive mode. 
@@ -167,8 +167,8 @@ Setup is driven by `/etc/protect` folder that has 4 components:
 
 In dom0,
 
-- liteQube.Message: displays argument as a message (default timeout 2000)
-- liteQube.Error: displays argument as an error notification (default timeout 5000)
+- liteqube.Message: displays argument as a message (default timeout 2000)
+- liteqube.Error: displays argument as an error notification (default timeout 5000)
 
 **Keys and password storage in core-keys**
 
@@ -198,7 +198,7 @@ Within this service, several status updates are signaled to dom0 via liteqube.Si
 
 Now dom0 handler is a simple notification, but it could be used to make a meter widget in the future.
 
-liteqube.WiFiSetState takes "off" argument to turn the wifi off on core-net, it is not currenlty used by any other script.
+liteqube.WifiSetState takes "off" argument to turn the wifi off on core-net, it is not currenlty used by any other script.
 
 tor status
 liteqube.SignalTor to dom0
@@ -237,7 +237,7 @@ liteqube.SignalSound takes current status but does not actually do anything usef
 
 **Print**
 
-liteqube.PrintFIle is supposed to take the file from stdin and print it using argument as a name but the service was never here.
+liteqube.PrintFile is supposed to take the file from stdin and print it using argument as a name but the service was never here.
 
 
 ### Using Tor Browser with 'core-tor'

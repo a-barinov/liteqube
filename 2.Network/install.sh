@@ -61,7 +61,7 @@ qvm-volume info "${VM_CORE}:private" revisions|tail -1 >"/tmp/liteqube-rollback.
 message "MAKING ${YELLOW}dom0 ${PREFIX}CONFIG BACKUPS"
 qubes-prefs --quiet --get updatevm >/tmp/liteqube-rollback.2/updatevm
 cp ${LQ_POLICYFILE} /tmp/liteqube-rollback.2/
-cp /etc/qubes/policy.d/50-config-updates.policy /tmp/liteqube-rollback.2/
+[ ! -e /etc/qubes/policy.d/50-config-updates.policy ] || cp /etc/qubes/policy.d/50-config-updates.policy /tmp/liteqube-rollback.2/
 cp /etc/yum.repos.d/qubes-dom0.repo /tmp/liteqube-rollback.2
 cp /etc/dnf/dnf.conf /tmp/liteqube-rollback.2
 
@@ -341,7 +341,7 @@ add_permission "SignalWifi" "${VM_NET}" "dom0" "allow"
 setup_permissions "${VM_TOR}" xorg
 add_permission "SignalTor" "${VM_TOR}" "dom0" "allow"
 add_permission "TorSetAP" "${VM_NET}" "${VM_TOR}" "allow"
-add_permission "WiFiRequesttAP" "${VM_TOR}" "${VM_NET}" "allow"
+add_permission "WifiRequestAP" "${VM_TOR}" "${VM_NET}" "allow"
 setup_permissions "${VM_UPDATE}" xorg
 dom0_command lq-connect
 
@@ -358,7 +358,7 @@ if vm_exists "${SYS_NET}" ; then
         message "ATTACHING ${DEVICE}"
         qvm-pci attach "${VM_NET}" "${DEVICE}" --persistent ${OPTIONS} || true
     done
-    message "CONFIIGURING ${YELLOW}${VM_NET}"
+    message "CONFIGURING ${YELLOW}${VM_NET}"
     qvm-prefs --set "${VM_NET}" autostart True
     qvm-prefs --default "${SYS_NET}" autostart
     qvm-prefs --default "${SYS_FIREWALL}" autostart
@@ -416,7 +416,7 @@ qvm-prefs --quiet --set "${VM_UPDATE}" vcpus 2
 qvm-prefs --quiet --set "${VM_UPDATE}" provides_network True
 
 message "CONFIGURING ${YELLOW}dom0"
-> "/etc/qubes/policy.d/50-config-updates.policy"
+sudo truncate -s 0 "/etc/qubes/policy.d/50-config-updates.policy"
 add_line dom0 "/etc/qubes/policy.d/50-config-updates.policy" "qubes.UpdatesProxy	*	@tag:whonix-updatevm	@default	allow target=${VM_UPDATE}"
 add_line dom0 "/etc/qubes/policy.d/50-config-updates.policy" "qubes.UpdatesProxy	*	@type:TemplateVM	@default	allow target=${VM_UPDATE}"
 

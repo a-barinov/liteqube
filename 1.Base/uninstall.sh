@@ -11,6 +11,8 @@ qvm-shutdown --quiet --wait --force "${VM_CORE}"
 sudo rm -rf /etc/qubes-rpc/policy/liteqube.*
 sudo rm -rf /etc/qubes-rpc/liteqube.*
 sudo rm -rf ~/bin/lq-*
+sudo rm -f "${LQ_POLICYFILE}"
+[ ! -d ~/bin ] || rmdir ~/bin 2>/dev/null || true
 
 qvm-remove --force "${VM_XORG}"
 qvm-remove --force "${VM_KEYS}"
