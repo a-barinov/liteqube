@@ -108,6 +108,8 @@ vm_configure()
     qvm-prefs --quiet --set "${_VM}" audiovm ''
     qvm-prefs --quiet --set "${_VM}" vcpus 1
     qvm-features "${_VM}" servicevm 1
+    # Lets the Qui Domains widget in dom0 offer a debug console for headless qubes
+    qvm-features "${_VM}" expert-mode 1
 }
 
 vm_resize_private()
