@@ -264,6 +264,8 @@ if [ x"${NETVM_WIFI}" = x"True" ] ; then
         qvm-start --quiet --skip-if-running "${VM_NET}"
         sleep 3
         qvm-shutdown --quiet --wait --force "${VM_NET}"
+        mkdir -p "default.net-appvm/core-net/rw/bind-dirs/var/lib/NetworkManager" \
+                 "default.net-appvm/debian-core/etc/protect/checksum.core-net/bind-dirs/var/lib/NetworkManager"
         cat ./files/RandomSeed > "default.net-appvm/core-net/rw/bind-dirs/var/lib/NetworkManager/secret_key"
         sha256sum -b ./files/RandomSeed | cut -d' ' -f1 > "default.net-appvm/debian-core/etc/protect/checksum.core-net/bind-dirs/var/lib/NetworkManager/secret_key"
         sha512sum -b ./files/RandomSeed | cut -d' ' -f1 >> "default.net-appvm/debian-core/etc/protect/checksum.core-net/bind-dirs/var/lib/NetworkManager/secret_key"

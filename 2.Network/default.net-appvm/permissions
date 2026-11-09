@@ -1,9 +1,9 @@
 drwx------	root	root	./debian-core/etc/protect/checksum.core-net
-drwx------	root	root	./debian-core/etc/protect/checksum.core-net/bind-dirs/
+drwx------	root	root	./debian-core/etc/protect/checksum.core-net/bind-dirs
 drwxr-xr-x	root	root	./debian-core/etc/protect/checksum.core-net/bind-dirs/var
 drwxr-xr-x	root	root	./debian-core/etc/protect/checksum.core-net/bind-dirs/var/lib
 drwxr-xr-x	root	root	./debian-core/etc/protect/checksum.core-net/bind-dirs/var/lib/NetworkManager
-drwx------	root	root	./debian-core/etc/protect/checksum.core-net/bind-dirs/var/lib/NetworkManager/secret_key
+-rw-------	root	root	./debian-core/etc/protect/checksum.core-net/bind-dirs/var/lib/NetworkManager/secret_key
 drwx------	root	root	./debian-core/etc/protect/template.core-net
 drwxr-xr-x	root	root	./debian-core/etc/protect/template.core-net/config
 -rwxr-xr-x	root	root	./debian-core/etc/protect/template.core-net/config/rc.local
@@ -24,4 +24,4 @@ drwxr-xr-x	root	root	./core-net/rw/bind-dirs
 drwxr-xr-x	root	root	./core-net/rw/bind-dirs/var
 drwxr-xr-x	root	root	./core-net/rw/bind-dirs/var/lib
 drwxr-xr-x	root	root	./core-net/rw/bind-dirs/var/lib/NetworkManager
-drwx------	root	root	./core-net/rw/bind-dirs/var/lib/NetworkManager/secret_key
+-rw-------	root	root	./core-net/rw/bind-dirs/var/lib/NetworkManager/secret_key
